@@ -1,0 +1,731 @@
+import React, { useEffect, useMemo, useState } from "react";
+
+// ---------- Helpers ----------
+const uid = () => `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+// Date -> "YYYY-MM-DDTHH:mm" (yerel saat, UTC'ye çevirmeden)
+const toLocalISO = (d) => {
+  const dt = new Date(d.getTime() - d.getTimezoneOffset() * 60000);
+  return dt.toISOString().slice(0, 16);
+};
+// Date veya string -> YYYY-MM-DD (yerel)
+const ymd = (val) => {
+  const dt = typeof val === "string" ? parseLocal(val) : new Date(val);
+  const yyyy = dt.getFullYear();
+  const mm = String(dt.getMonth()+1).padStart(2,"0");
+  const dd = String(dt.getDate()).padStart(2,"0");
+  return `${yyyy}-${mm}-${dd}`;
+};
+const HOURS = Array.from({ length: 24 }, (_, i) => i);
+
+// === Board sabitleri & yardımcılar ===
+const ROW_H = 48; // 1 saat = 48px yükseklik
+
+function handleDoubleClickDay(e, day) {
+  const rect = e.currentTarget.getBoundingClientRect();
+  const y = e.clientY - rect.top;
+  const hour = Math.max(0, Math.min(23, Math.floor(y / ROW_H)));
+  quickAddAt(day, hour);
+}
+
+function eventRange(it) {
+  const s = parseLocal(it.start);
+  const e = it.end ? parseLocal(it.end) : new Date(s.getTime() + 60*60*1000);
+  return [s, e];
+}
+function startOfWeek(date, weekStartsOn = 1) {
+  const d = new Date(date);
+  const day = d.getDay();
+  const diff = (day === 0 ? 7 : day) - weekStartsOn;
+  d.setDate(d.getDate() - diff);
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+function addDays(date, n) {
+  const d = new Date(date);
+  d.setDate(d.getDate() + n);
+  return d;
+}
+function fmtDate(d) {
+  const dd = d.getDate().toString().padStart(2, "0");
+  const mm = (d.getMonth() + 1).toString().padStart(2, "0");
+  return `${dd}.${mm}`;
+}
+function fmtTime(dateStr){
+  if(!dateStr) return "";
+  const d = parseLocal(dateStr);
+  return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+}
+function isSameDayStr(dateStr, dayDate) {
+  if (!dateStr) return false;
+  return ymd(dateStr) === ymd(dayDate);
+}
+// "YYYY-MM-DDTHH:mm" -> Date (yerel saat olarak)
+function parseLocal(dateStr) {
+  if (!dateStr) return null;
+  const [y, m, rest] = dateStr.split("-");
+  const [d, time="00:00"] = rest.split("T");
+  const [hh, mm] = time.split(":");
+  return new Date(+y, +m - 1, +d, +hh, +mm, 0, 0);
+}
+function overlapsDay(it, day) {
+  const [s, e] = eventRange(it);               // zaten bizde var: parseLocal kullanıyor
+  const dayStart = new Date(day); dayStart.setHours(0,0,0,0);
+  const dayEnd   = new Date(day); dayEnd.setHours(23,59,0,0);
+  return s < dayEnd && e > dayStart;           // herhangi bir kesişim yeterli
+}
+
+// --- Drag helpers ---
+const SNAP_MIN = 15;              // 15 dk'ya oturt
+
+function snapMinutes(m, step = SNAP_MIN){ return Math.round(m/step)*step; }
+
+// Gün sütununda mouse konumunu -> yerel Date
+function posToTime(day, e){
+  const rect = e.currentTarget.getBoundingClientRect();
+  const y = e.clientY - rect.top;
+  const totalMin = Math.max(0, Math.min(24*60, Math.round((y/ROW_H)*60)));
+  const hh = Math.floor(totalMin/60);
+  const mm = snapMinutes(totalMin%60);
+  const d = new Date(day); d.setHours(hh, mm, 0, 0);
+  return d;
+}
+
+// Basit saat:dakika formatı (Date objesi için)
+function fmtHM(d){
+  return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+}
+
+// --- Çok saatlik görünüm ve varsayılan bitiş için yardımcılar ---
+function slotRange(day, hour) {
+  const s = new Date(day); s.setHours(hour, 0, 0, 0);
+  const e = new Date(s);  e.setHours(s.getHours() + 1);
+  return [s, e];
+}
+
+function overlaps(it, day, hour) {
+  const [ss, se] = slotRange(day, hour);
+  const [es, ee] = eventRange(it);
+  return es < se && ee > ss; // çakışma varsa bu saat hücresinde göster
+}
+function addOneHourSameDay(d) {
+  const end = new Date(d);
+  end.setHours(end.getHours() + 1);
+  const endOfDay = new Date(d); endOfDay.setHours(23, 59, 0, 0);
+  return end > endOfDay ? endOfDay : end;
+}
+// ---------- Data schema ----------
+const CATEGORIES = [
+  {
+    value: "yemek",
+    label: "Yemek",
+    badge: "bg-rose-100 text-rose-700 border-rose-200",
+  },
+  {
+    value: "yol",
+    label: "Yol",
+    badge: "bg-sky-100 text-sky-700 border-sky-200",
+  },
+  {
+    value: "tur",
+    label: "Tur",
+    badge: "bg-emerald-100 text-emerald-700 border-emerald-200",
+  },
+  {
+    value: "alisveris",
+    label: "Alışveriş",
+    badge: "bg-amber-100 text-amber-800 border-amber-200",
+  },
+];
+const STATUS = [
+  { value: "todo", label: "Yapılacak", dot: "bg-slate-400" },
+  { value: "done", label: "Tamamlandı", dot: "bg-emerald-600" },
+  { value: "postponed", label: "Ertelendi", dot: "bg-amber-500" },
+  { value: "cancelled", label: "İptal edildi", dot: "bg-rose-600" },
+];
+
+const DEFAULT_ITEM = {
+  id: "",
+  title: "",
+  category: "yemek",
+  status: "todo",
+  statusNote: "",
+  start: "",
+  end: "",
+  location: "",
+  notes: "",
+};
+
+const STORAGE_KEY = "planner.items.v2";
+
+export default function PlannerApp() {
+  const [items, setItems] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+    } catch {
+      return [];
+    }
+  });
+  const [view, setView] = useState("list"); // list | week
+  const [selectedDate, setSelectedDate] = useState(() => new Date());
+  const [showForm, setShowForm] = useState(false);
+  const [draft, setDraft] = useState({ ...DEFAULT_ITEM });
+  const [draggingId, setDraggingId] = useState(null);
+  const [ghostPos, setGhostPos] = useState(null); // { dayIndex, topPx, heightPx, label }
+  const [resizing, setResizing] = useState(null); // { id, edge: 'start'|'end', dayIndex }
+
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+  }, [items]);
+
+  const sortedItems = useMemo(
+    () => [...items].sort((a, b) => (a.start || "").localeCompare(b.start || "")),
+    [items]
+  );
+  const weekStart = useMemo(() => startOfWeek(selectedDate, 1), [selectedDate]);
+  const weekDays = useMemo(
+    () => Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)),
+    [weekStart]
+  );
+
+  function itemsAt(day, hour){
+  return sortedItems.filter((it)=> overlaps(it, day, hour));
+  }
+
+  function openCreate(initial = {}) {
+  const startDate = initial.start ? new Date(initial.start) : new Date();
+  const endDefault = addOneHourSameDay(startDate);
+  setDraft({
+    ...DEFAULT_ITEM,
+    ...initial,
+    id: "",
+    start: toLocalISO(startDate),
+    end: toLocalISO(endDefault),
+  });
+  setShowForm(true);
+}
+
+  function editItem(it) {
+    setDraft({ ...DEFAULT_ITEM, ...it });
+    setShowForm(true);
+  }
+  function saveDraft() {
+    if (!draft.title.trim()) {
+      alert("Başlık zorunlu");
+      return;
+    }
+    const newItem = { ...draft, id: draft.id || uid() };
+    setItems((prev) => {
+      const i = prev.findIndex((x) => x.id === newItem.id);
+      if (i >= 0) {
+        const cp = [...prev];
+        cp[i] = newItem;
+        return cp;
+      }
+      return [...prev, newItem];
+    });
+    setShowForm(false);
+    setDraft({ ...DEFAULT_ITEM });
+  }
+  function removeItem(id) {
+    if (!confirm("Silinsin mi?")) return;
+    setItems((prev) => prev.filter((x) => x.id !== id));
+  }
+
+  // --- Drag & Drop + Ghost ---
+  function handleDragStart(e, item) {
+    e.dataTransfer.setData("text/plain", item.id);
+    setDraggingId(item.id);
+  }
+  function handleDragEnd() {
+    setDraggingId(null);
+    setGhost(null);
+  }
+  function allowDragOver(e, dayIndex, hour) {
+    e.preventDefault();
+    if (!draggingId) return;
+    const it = items.find((x) => x.id === draggingId);
+    if (!it) return;
+    const durationMs = it.end ? new Date(it.end) - new Date(it.start) : 0;
+    const span = Math.max(1, Math.ceil(durationMs / (60 * 60 * 1000)) || 1);
+    const start = String(hour).padStart(2, "0") + ":00";
+    const endHour = hour + span;
+    const end = String(endHour).padStart(2, "0") + ":00";
+    setGhost({
+      dayIndex,
+      startHour: hour,
+      span,
+      title: it.title,
+      timeLabel: `${start} → ${end}`,
+    });
+  }
+  function handleDrop(day, hour, e) {
+    e.preventDefault();
+    const id = e.dataTransfer.getData("text/plain");
+    if (!id) return;
+    setItems((prev) =>
+      prev.map((it) => {
+        if (it.id !== id) return it;
+        const d = new Date(day);
+        d.setHours(hour, 0, 0, 0);
+        const duration = it.end ? new Date(it.end) - new Date(it.start) : 0;
+        const startISO = toLocalISO(d);
+        const endISO =
+          duration > 0 ? toLocalISO(new Date(d.getTime() + duration)) : it.end;
+        return { ...it, start: startISO, end: endISO };
+      })
+    );
+    setDraggingId(null);
+    setGhost(null);
+  }
+
+    function quickAddAt(day,hour){
+  const title = prompt(`Başlık (${fmtDate(day)} ${String(hour).padStart(2,'0')}:00)`);
+  if(!title) return;
+  const d = new Date(day); d.setHours(hour,0,0,0);
+  const end = addOneHourSameDay(d);
+  const item = { ...DEFAULT_ITEM, id: uid(), title, start: toLocalISO(d), end: toLocalISO(end) };
+  setItems(p => [...p, item]);
+}
+
+
+  const catMeta = (val) =>
+    CATEGORIES.find((c) => c.value === val) || CATEGORIES[0];
+  const statusMeta = (val) =>
+    STATUS.find((s) => s.value === val) || STATUS[0];
+
+  return (
+    <div className="p-4 max-w-6xl mx-auto">
+      <header className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <h1 className="text-2xl font-bold">Planlayıcı</h1>
+        <nav className="flex items-center gap-2">
+          <button
+            onClick={() => setView("list")}
+            className={`px-3 py-2 rounded-xl border ${
+              view === "list" ? "bg-indigo-600 text-white" : "bg-white"
+            }`}
+          >
+            Liste
+          </button>
+          <button
+            onClick={() => setView("week")}
+            className={`px-3 py-2 rounded-xl border ${
+              view === "week" ? "bg-indigo-600 text-white" : "bg-white"
+            }`}
+          >
+            Haftalık Board
+          </button>
+          <button
+            onClick={() => openCreate({ start: new Date() })}
+            className="px-3 py-2 rounded-xl bg-green-600 text-white"
+          >
+            + Yeni
+          </button>
+        </nav>
+      </header>
+
+      {/* Liste görünümü */}
+      {view === "list" && (
+        <section className="mt-6 grid grid-cols-1 gap-3">
+          {sortedItems.length === 0 && (
+            <div className="border border-dashed rounded-2xl p-8 text-center text-slate-500">
+              Henüz kayıt yok. "+ Yeni" ile ekleyebilirsin.
+            </div>
+          )}
+          {sortedItems.map((it) => (
+            <article
+              key={it.id}
+              className="rounded-2xl border bg-white p-4 flex flex-col md:flex-row md:items-center gap-3 shadow-sm"
+            >
+              <div className="flex items-start gap-3 md:w-2/3">
+                <div
+                  className={`px-2 py-1 rounded-lg border text-xs ${catMeta(
+                    it.category
+                  ).badge}`}
+                >
+                  {catMeta(it.category).label}
+                </div>
+                <div>
+                  <h3 className="font-medium">{it.title}</h3>
+                  <div className="text-xs text-slate-500 mt-1 flex gap-2 flex-wrap">
+                    <span className="px-2 py-0.5 rounded bg-slate-100 font-mono">
+                      {fmtTime(it.start)}
+                      {it.end ? `→${fmtTime(it.end)}` : ""} · {ymd(it.start)}
+                    </span>
+                    {it.location && (
+                      <span className="px-2 py-0.5 rounded bg-slate-100">
+                        📍 {it.location}
+                      </span>
+                    )}
+                    <span className="px-2 py-0.5 rounded bg-slate-100 flex items-center gap-1">
+                      <i
+                        className={`inline-block w-2 h-2 rounded-full ${
+                          statusMeta(it.status).dot
+                        }`}
+                      ></i>{" "}
+                      {statusMeta(it.status).label}
+                    </span>
+                  </div>
+                  {it.statusNote && (
+                    <div className="text-xs text-amber-700 mt-1">
+                      💬 {it.statusNote}
+                    </div>
+                  )}
+                  {it.notes && (
+                    <div className="text-xs text-slate-600 mt-1">
+                      🗒️ {it.notes}
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div className="md:w-1/3 md:ml-auto flex items-center gap-2">
+                <button
+                  className="px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200"
+                  onClick={() => editItem(it)}
+                >
+                  Düzenle
+                </button>
+                <button
+                  className="px-3 py-2 rounded-xl bg-rose-50 text-rose-700 hover:bg-rose-100"
+                  onClick={() => removeItem(it.id)}
+                >
+                  Sil
+                </button>
+              </div>
+            </article>
+          ))}
+        </section>
+      )}
+
+      {/* Haftalık board görünümü */}
+      {view==='week' && (
+  <section className="mt-6">
+    {/* Üst bar: hafta navigasyonu + tarih seçici */}
+    <div className="flex items-center justify-between gap-2 flex-wrap">
+      <div className="flex items-center gap-2">
+        <button className="px-3 py-2 rounded-xl border" onClick={()=>setSelectedDate(addDays(weekStart,-7))}>← Önceki</button>
+        <div className="font-semibold">Hafta: {fmtDate(weekDays[0])} – {fmtDate(weekDays[6])}</div>
+        <button className="px-3 py-2 rounded-xl border" onClick={()=>setSelectedDate(addDays(weekStart,7))}>Sonraki →</button>
+      </div>
+      <input type="date" value={ymd(selectedDate)} onChange={(e)=>setSelectedDate(new Date(e.target.value))} className="px-3 py-2 rounded-xl border" />
+    </div>
+
+    {/* Gün başlıkları */}
+    <div className="mt-4 grid" style={{ gridTemplateColumns: `80px repeat(7, 1fr)` }}>
+      <div></div>
+      {weekDays.map((d,i)=>(
+        <div key={i} className="px-2 py-2 text-sm font-medium text-center bg-slate-100 border">
+          {d.toLocaleDateString(undefined,{weekday:'short'})} <span className="font-mono">{fmtDate(d)}</span>
+        </div>
+      ))}
+    </div>
+
+    {/* GÖVDE: Solda saatler, sağda 7 günlük sütunlar (tek blok görünüm) */}
+    <div className="overflow-auto">
+      <div className="grid" style={{ gridTemplateColumns: `80px repeat(7, 1fr)` }}>
+        {/* Sol: saat kolonunu tek seferde çiz */}
+        <div className="border-r">
+          {HOURS.map((h) => (
+            <div
+              key={h}
+              className="h-12 px-2 py-2 text-right text-xs text-slate-500 font-mono border-b"
+            >
+              {String(h).padStart(2, "0")}:00
+            </div>
+          ))}
+        </div>
+
+        {/* Sağ: 7 gün sütunu */}
+        {weekDays.map((d, i) => {
+          // Bu güne ait tüm kayıtlar
+          const dayList = sortedItems.filter((it) => overlapsDay(it, d));
+          return (
+            <div
+                key={i}
+                className="relative border-l"
+                style={{ height: ROW_H * 24 }}
+                onDoubleClick={(e) => handleDoubleClickDay(e, d)}
+
+                /* --- TAŞIMA (drag) ghost'u --- */
+                onDragOver={(e)=> {
+                  e.preventDefault();
+                  if(resizing) return;                // resize varken taşıma ghost'u göstermeyelim
+                  if(!draggingId) return;
+                  const it = items.find(x=>x.id===draggingId); if(!it) return;
+                  const [sOld, eOld] = eventRange(it);
+                  const dur = eOld - sOld;
+                  const startD = posToTime(d, e);
+                  const endD = new Date(startD.getTime() + dur);
+                  const topPx = (startD.getHours() + startD.getMinutes()/60) * ROW_H;
+                  const heightPx = Math.max((dur/3600000)*ROW_H, 20);
+                  setGhostPos({ dayIndex:i, topPx, heightPx, label: `${fmtHM(startD)} → ${fmtHM(endD)}` });
+                }}
+                onDrop={(e)=> {
+                  e.preventDefault();
+                  if(resizing) return;
+                  const id = e.dataTransfer.getData('text/plain'); if(!id) return;
+                  const it = items.find(x=>x.id===id); if(!it) return;
+                  const [sOld, eOld] = eventRange(it);
+                  const dur = eOld - sOld;
+                  const startD = posToTime(d, e);
+                  const endD = new Date(startD.getTime() + dur);
+                  setItems(prev => prev.map(x => x.id===id ? ({ ...x, start: toLocalISO(startD), end: toLocalISO(endD) }) : x));
+                  setDraggingId(null); setGhostPos(null);
+                }}
+
+                /* --- YENİ: RESIZE davranışı --- */
+                onMouseMove={(e)=>{
+                  if(!resizing || resizing.dayIndex!==i) return;
+                  const it = items.find(x=>x.id===resizing.id); if(!it) return;
+                  const [sOld, eOld] = eventRange(it);
+
+                  if(resizing.edge==='start'){
+                    let startD = posToTime(d, e);
+                    const dayStart = new Date(d); dayStart.setHours(0,0,0,0);
+                    const maxStart = new Date(eOld.getTime() - SNAP_MIN*60000);   // min 15 dk
+                    if(startD < dayStart) startD = dayStart;
+                    if(startD > maxStart) startD = maxStart;
+
+                    const topPx = (startD.getHours() + startD.getMinutes()/60) * ROW_H;
+                    const heightPx = Math.max(((eOld - startD)/3600000)*ROW_H, 20);
+                    setGhostPos({ dayIndex:i, topPx, heightPx, label: `${fmtHM(startD)} → ${fmtHM(eOld)}` });
+                  } else {
+                    let endD = posToTime(d, e);
+                    const dayEnd = new Date(d); dayEnd.setHours(23,59,0,0);
+                    const minEnd = new Date(sOld.getTime() + SNAP_MIN*60000);
+                    if(endD > dayEnd) endD = dayEnd;
+                    if(endD < minEnd) endD = minEnd;
+
+                    const topPx = (sOld.getHours() + sOld.getMinutes()/60) * ROW_H;
+                    const heightPx = Math.max(((endD - sOld)/3600000)*ROW_H, 20);
+                    setGhostPos({ dayIndex:i, topPx, heightPx, label: `${fmtHM(sOld)} → ${fmtHM(endD)}` });
+                  }
+                }}
+                onMouseUp={(e)=>{
+                  if(!resizing || resizing.dayIndex!==i) return;
+                  const it = items.find(x=>x.id===resizing.id); if(!it) { setResizing(null); setGhostPos(null); return; }
+                  const [sOld, eOld] = eventRange(it);
+
+                  if(resizing.edge==='start'){
+                    let startD = posToTime(d, e);
+                    const dayStart = new Date(d); dayStart.setHours(0,0,0,0);
+                    const maxStart = new Date(eOld.getTime() - SNAP_MIN*60000);
+                    if(startD < dayStart) startD = dayStart;
+                    if(startD > maxStart) startD = maxStart;
+                    setItems(prev => prev.map(x => x.id===it.id ? ({ ...x, start: toLocalISO(startD) }) : x));
+                  } else {
+                    let endD = posToTime(d, e);
+                    const dayEnd = new Date(d); dayEnd.setHours(23,59,0,0);
+                    const minEnd = new Date(sOld.getTime() + SNAP_MIN*60000);
+                    if(endD > dayEnd) endD = dayEnd;
+                    if(endD < minEnd) endD = minEnd;
+                    setItems(prev => prev.map(x => x.id===it.id ? ({ ...x, end: toLocalISO(endD) }) : x));
+                  }
+                  setResizing(null); setGhostPos(null);
+                }}
+                onDragLeave={()=> !resizing && setGhostPos(null)}
+                title="Çift tıkla: hızlı ekle"
+              >
+
+              {/* Saat çizgileri */}
+              {ghostPos && ghostPos.dayIndex===i && (
+                <div
+                  className="absolute left-1 right-1 border-2 border-dashed border-indigo-400 bg-indigo-200/30 rounded-lg pointer-events-none"
+                  style={{ top: ghostPos.topPx, height: ghostPos.heightPx, zIndex: 40 }}
+                >
+                  <div className="text-[10px] font-mono px-1">{ghostPos.label}</div>
+                </div>
+              )}
+              {HOURS.map((h) => (
+                <div
+                  key={h}
+                  className="absolute left-0 right-0 border-b"
+                  style={{ top: h * ROW_H }}
+                />
+              ))}
+
+              {/* Etkinlik blokları: TEK PARÇA */}
+              {dayList.map((it) => {
+                const [s, e] = eventRange(it);
+
+                // günü taşanları gün içinde kırp
+                const dayStart = new Date(d); dayStart.setHours(0,0,0,0);
+                const dayEnd   = new Date(d); dayEnd.setHours(23,59,0,0);
+                const start = s < dayStart ? dayStart : s;
+                const end   = e > dayEnd   ? dayEnd   : e;
+
+                const startHours = start.getHours() + start.getMinutes() / 60;
+                const durHours   = Math.max((end - start) / 3600000, 0.25); // min 15 dk görünür
+                const topPx      = startHours * ROW_H;
+                const heightPx   = Math.max(durHours * ROW_H, 20);          // min 20px yükseklik
+
+                return (
+                      <button
+                        key={it.id}
+                        draggable={!resizing}
+                        onDragStart={(e)=>{ e.dataTransfer.setData('text/plain', it.id); setDraggingId(it.id); }}
+                        onDragEnd={()=>{ setDraggingId(null); setGhostPos(null); }}
+                        onClick={()=> !draggingId && !resizing && editItem(it)} // resize/drag sırasında modal açılmasın
+                        className={`absolute left-0 right-0 mx-1 w-auto rounded-lg border shadow-sm text-left px-2 py-1 flex flex-col gap-0.5 ${catMeta(it.category).badge}`}
+                        style={{ top: topPx, height: heightPx, zIndex: 30 }}
+                        title={`${fmtTime(it.start)}${it.end ? ` → ${fmtTime(it.end)}` : ""}`}
+                      >
+                        <div className="text-[11px] font-medium leading-tight truncate">{it.title}</div>
+                        <div className="text-[10px] font-mono opacity-80">
+                          {fmtTime(it.start)}{it.end ? ` → ${fmtTime(it.end)}` : ""}
+                        </div>
+
+                        {/* --- Resize tutamakları --- */}
+                        <div
+                          className="absolute left-0 right-0 top-0 h-2 cursor-n-resize"
+                          onMouseDown={(e)=>{ e.stopPropagation(); setResizing({ id: it.id, edge: 'start', dayIndex: i }); }}
+                        />
+                        <div
+                          className="absolute left-0 right-0 bottom-0 h-2 cursor-s-resize"
+                          onMouseDown={(e)=>{ e.stopPropagation(); setResizing({ id: it.id, edge: 'end', dayIndex: i }); }}
+                        />
+                      </button>
+                    );
+              })}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+
+    <div className="text-xs text-slate-500 mt-2">
+      İpucu: Gün sütununda boş bir yere <b>çift tıkla</b> hızlı ekle. Bloka <b>tıkla</b> → düzenle.
+    </div>
+  </section>
+)}
+
+
+      {/* Modal */}
+      {showForm && (
+        <div
+          className="fixed inset-0 z-50 bg-black/50 grid place-items-center"
+          onClick={() => setShowForm(false)}
+        >
+          <div
+            className="bg-white p-6 rounded-lg w-full max-w-md"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 className="text-lg font-semibold mb-4">
+              {draft.id ? "Düzenle" : "Yeni Kayıt"}
+            </h2>
+            <div className="grid gap-3">
+              <input
+                value={draft.title}
+                onChange={(e) => setDraft({ ...draft, title: e.target.value })}
+                placeholder="Başlık"
+                className="w-full border p-2 rounded"
+              />
+
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-xs text-slate-500">Kategori</label>
+                  <select
+                    value={draft.category}
+                    onChange={(e) =>
+                      setDraft({ ...draft, category: e.target.value })
+                    }
+                    className="w-full border p-2 rounded"
+                  >
+                    {CATEGORIES.map((c) => (
+                      <option key={c.value} value={c.value}>
+                        {c.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs text-slate-500">Durum</label>
+                  <select
+                    value={draft.status}
+                    onChange={(e) =>
+                      setDraft({ ...draft, status: e.target.value })
+                    }
+                    className="w-full border p-2 rounded"
+                  >
+                    {STATUS.map((s) => (
+                      <option key={s.value} value={s.value}>
+                        {s.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <input
+                type="datetime-local"
+                value={draft.start}
+                onChange={(e) => {
+                  const startStr = e.target.value;
+                  const startDate = new Date(startStr);
+                  setDraft((prev) => {
+                    let nextEnd = prev.end ? new Date(prev.end) : null;
+                    // end yoksa, end <= start ise veya gün değiştiyse: aynı gün +1 saat öner
+                    if (!nextEnd || nextEnd <= startDate || ymd(nextEnd) !== ymd(startDate)) {
+                      nextEnd = addOneHourSameDay(startDate);
+                    }
+                    return { ...prev, start: startStr, end: toLocalISO(nextEnd) };
+                  });
+                }}
+                className="w-full border p-2 rounded"
+              />
+              <input
+                type="datetime-local"
+                value={draft.end || ""}
+                onChange={(e) => setDraft({ ...draft, end: e.target.value })}
+                className="w-full border p-2 rounded"
+                placeholder="Bitiş"
+              />
+              <input
+                value={draft.location}
+                onChange={(e) => setDraft({ ...draft, location: e.target.value })}
+                placeholder="Konum"
+                className="w-full border p-2 rounded"
+              />
+              <textarea
+                value={draft.notes}
+                onChange={(e) => setDraft({ ...draft, notes: e.target.value })}
+                placeholder="Notlar"
+                className="w-full border p-2 rounded"
+                rows={3}
+              />
+
+              <div>
+                <label className="text-xs text-slate-500">
+                  Durum Notu (örn. neden ertelendi / iptal edildi)
+                </label>
+                <textarea
+                  value={draft.statusNote}
+                  onChange={(e) =>
+                    setDraft({ ...draft, statusNote: e.target.value })
+                  }
+                  className="w-full border p-2 rounded"
+                  rows={2}
+                  placeholder="Kısa açıklama"
+                />
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 mt-4">
+              <button
+                onClick={() => setShowForm(false)}
+                className="px-4 py-2 bg-slate-200 rounded-lg"
+              >
+                Vazgeç
+              </button>
+              <button
+                onClick={saveDraft}
+                className="px-4 py-2 bg-indigo-600 text-white rounded-lg"
+              >
+                Kaydet
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
