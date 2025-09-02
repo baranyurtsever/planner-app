@@ -1,0 +1,8 @@
+const fs = require('fs');
+const targetLine = Number(process.argv[2] || 2503);
+const s = fs.readFileSync('src/App.jsx','utf8');
+const lines = s.split('\n');
+const upto = lines.slice(0, targetLine-1).join('\n');
+let i=0,n=upto.length; let stack=[]; let inJS=0, inStr=null; function posToLineCol(p){ const lines=s.slice(0,p).split('\n'); return {line:lines.length,col:lines[lines.length-1].length+1}; }
+while(i<n){ const ch=upto[i]; if(inStr){ if(ch==='\\' && i+1<n){ i+=2; continue;} if(ch===inStr){ inStr=null; i++; continue;} if(ch==='\n'){ i++; continue;} i++; continue;} if(ch==='"' || ch==="'" || ch==='`'){ inStr=ch; i++; continue;} if(ch==='{'){ inJS++; i++; continue;} if(ch==='}'){ if(inJS>0) inJS--; i++; continue;} if(inJS>0){ i++; continue;} if(ch==='<'){ if(upto.substr(i,4)==='<!--'){ const end=upto.indexOf('-->', i+4); if(end===-1) break; i=end+3; continue; } const end=upto.indexOf('>', i+1); if(end===-1) break; const token=upto.slice(i+1,end).trim(); const isClose = token[0]==='/'; const isSelfClose = token.endsWith('/'); const m=token.match(/^\/?\s*([A-Za-z0-9-_:]+)/); const name=m?m[1]:null; const p=posToLineCol(i); if(!isClose && !isSelfClose && name && name!=='!'){ stack.push({name, pos:i, line:p.line, col:p.col}); } else if(isClose){ const idx=stack.map(x=>x.name).lastIndexOf(name); if(idx===-1){ console.log('Unmatched closing',name,'at',p); process.exit(0);} else stack.splice(idx,1); } i=end+1; continue;} i++; }
+if(stack.length){ console.log('Unclosed tags count at line',targetLine,':',stack.length); console.log('First unclosed:', stack[0]); console.log('Stack tail (10):', stack.slice(-10)); } else console.log('No unclosed tags up to line',targetLine);
