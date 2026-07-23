@@ -21,6 +21,10 @@ const initialForm = {
   category: 'activity',
   visibility: 'trip',
   notes: '',
+  locationName: '',
+  locationLat: '',
+  locationLng: '',
+  mapUrl: '',
   dateOnly: false,
   localDate: '',
   startsAtLocal: '',
@@ -70,6 +74,10 @@ export function PlanPage() {
       category: item.category,
       visibility: item.visibility,
       notes: item.notes || '',
+      locationName: item.location?.name || '',
+      locationLat: item.location?.lat ?? '',
+      locationLng: item.location?.lng ?? '',
+      mapUrl: item.location?.mapUrl || '',
       dateOnly,
       localDate: dateOnly ? item.time.localDate : '',
       startsAtLocal: dateOnly ? '' : utcToZonedLocal(item.time.startsAt, item.time.startTimeZone),
@@ -195,6 +203,41 @@ export function PlanPage() {
             onChange={(event) => setForm({ ...form, notes: event.target.value })}
             className="rounded-xl border border-slate-200 px-4 py-3 md:col-span-2"
           />
+          <input
+            aria-label="Konum adı"
+            placeholder="Konum adı"
+            value={form.locationName}
+            onChange={(event) => setForm({ ...form, locationName: event.target.value })}
+            className="rounded-xl border border-slate-200 px-4 py-3"
+          />
+          <input
+            type="url"
+            aria-label="Harita bağlantısı"
+            placeholder="Google Maps / harita bağlantısı"
+            value={form.mapUrl}
+            onChange={(event) => setForm({ ...form, mapUrl: event.target.value })}
+            className="rounded-xl border border-slate-200 px-4 py-3"
+          />
+          <label className="text-sm font-semibold text-slate-600">
+            Enlem
+            <input
+              type="number"
+              step="any"
+              value={form.locationLat}
+              onChange={(event) => setForm({ ...form, locationLat: event.target.value })}
+              className="mt-1 w-full rounded-xl border border-slate-200 px-4 py-3"
+            />
+          </label>
+          <label className="text-sm font-semibold text-slate-600">
+            Boylam
+            <input
+              type="number"
+              step="any"
+              value={form.locationLng}
+              onChange={(event) => setForm({ ...form, locationLng: event.target.value })}
+              className="mt-1 w-full rounded-xl border border-slate-200 px-4 py-3"
+            />
+          </label>
           <button className="rounded-xl bg-slate-900 px-5 py-3 font-bold text-white md:col-span-2">Kaydet</button>
         </form>
       )}
@@ -216,6 +259,7 @@ export function PlanPage() {
                   {displayTime.start}{displayTime.end ? ` → ${displayTime.end}` : ''}
                 </p>
                 {item.notes && <p className="mt-3 text-sm text-slate-600">{item.notes}</p>}
+                {item.location?.name && <p className="mt-2 text-sm font-semibold text-teal-700">📍 {item.location.name}</p>}
               </div>
               {editable && (
                 <div className="flex flex-col gap-2">

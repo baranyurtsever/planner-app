@@ -11,8 +11,10 @@ import {
 import { canManageTrip } from '../../../shared/domain/access'
 
 const tabs = [
-  ['plan', 'Plan'],
-  ['budget', 'Harcamalar'],
+  ['list', 'Liste'],
+  ['calendar', 'Takvim'],
+  ['route', 'Rota'],
+  ['budget', 'Bütçe'],
   ['preparation', 'Hazırlık'],
   ['settings', 'Ayarlarım'],
 ]

@@ -65,7 +65,7 @@ export function TripsPage() {
         {trips.map((trip) => (
           <Link
             key={trip.id}
-            to={`/app/trips/${trip.id}/plan`}
+            to={`/app/trips/${trip.id}/list`}
             className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition hover:-translate-y-0.5 hover:border-teal-300 hover:shadow-md"
           >
             <div className="flex items-center justify-between">

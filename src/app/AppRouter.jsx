@@ -13,6 +13,12 @@ const BudgetPage = lazy(() =>
 const PlanPage = lazy(() =>
   import('../features/itinerary/pages/PlanPage').then((module) => ({ default: module.PlanPage })),
 )
+const CalendarPage = lazy(() =>
+  import('../features/itinerary/pages/CalendarPage').then((module) => ({ default: module.CalendarPage })),
+)
+const RoutePage = lazy(() =>
+  import('../features/itinerary/pages/RoutePage').then((module) => ({ default: module.RoutePage })),
+)
 const PreparationPage = lazy(() =>
   import('../features/preparation/pages/PreparationPage').then((module) => ({ default: module.PreparationPage })),
 )
@@ -21,6 +27,12 @@ const TripSettingsPage = lazy(() =>
 )
 const PublicProfilePage = lazy(() =>
   import('../features/profile/pages/PublicProfilePage').then((module) => ({ default: module.PublicProfilePage })),
+)
+const AppProfilePage = lazy(() =>
+  import('../features/profile/pages/AppProfilePage').then((module) => ({ default: module.AppProfilePage })),
+)
+const PeoplePage = lazy(() =>
+  import('../features/social/pages/PeoplePage').then((module) => ({ default: module.PeoplePage })),
 )
 const PublicTripPage = lazy(() =>
   import('../features/profile/pages/PublicTripPage').then((module) => ({ default: module.PublicTripPage })),
@@ -60,9 +72,15 @@ export function AppRouter() {
           <Route path="app" element={<ProtectedRoute />}>
             <Route index element={<Navigate to="trips" replace />} />
             <Route path="trips" element={<TripsPage />} />
+            <Route path="people" element={<PeoplePage />} />
+            <Route path="people/:username" element={<AppProfilePage />} />
+            <Route path="profile" element={<AppProfilePage />} />
             <Route path="trips/:tripId" element={<TripLayout />}>
-              <Route index element={<Navigate to="plan" replace />} />
-              <Route path="plan" element={<PlanPage />} />
+              <Route index element={<Navigate to="list" replace />} />
+              <Route path="plan" element={<Navigate to="../list" replace />} />
+              <Route path="list" element={<PlanPage />} />
+              <Route path="calendar" element={<CalendarPage />} />
+              <Route path="route" element={<RoutePage />} />
               <Route path="budget" element={<BudgetPage />} />
               <Route path="preparation" element={<PreparationPage />} />
               <Route path="settings" element={<TripSettingsPage />} />

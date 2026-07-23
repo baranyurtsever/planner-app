@@ -3,7 +3,10 @@ import {
   collection,
   deleteDoc,
   doc,
+  onSnapshot,
+  query,
   serverTimestamp,
+  where,
   writeBatch,
 } from 'firebase/firestore'
 import { db } from '../../../infrastructure/firebase/firestoreClient'
@@ -15,6 +18,30 @@ export function sendFriendRequest(fromId, toId) {
     status: 'pending',
     createdAt: serverTimestamp(),
   })
+}
+
+export function subscribeToIncomingFriendRequests(userId, callback, onError = console.error) {
+  const requestsQuery = query(
+    collection(db, 'friendRequests'),
+    where('toId', '==', userId),
+  )
+  return onSnapshot(
+    requestsQuery,
+    (snapshot) => callback(snapshot.docs.map((item) => ({ id: item.id, ...item.data() }))),
+    onError,
+  )
+}
+
+export function subscribeToFriendships(userId, callback, onError = console.error) {
+  const friendshipsQuery = query(
+    collection(db, 'friendships'),
+    where('memberIds', 'array-contains', userId),
+  )
+  return onSnapshot(
+    friendshipsQuery,
+    (snapshot) => callback(snapshot.docs.map((item) => ({ id: item.id, ...item.data() }))),
+    onError,
+  )
 }
 
 export async function acceptFriendRequest(request) {
@@ -34,4 +61,8 @@ export async function acceptFriendRequest(request) {
 
 export function removeFriendship(friendshipId) {
   return deleteDoc(doc(db, 'friendships', friendshipId))
+}
+
+export function rejectFriendRequest(requestId) {
+  return deleteDoc(doc(db, 'friendRequests', requestId))
 }

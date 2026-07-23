@@ -161,6 +161,15 @@ describe('user-owned expenses', () => {
       }),
     )
     await assertFails(
+      setDoc(doc(db, 'expenses', 'invalid-kind'), {
+        ownerId: 'viewer',
+        tripId: 'public-trip',
+        visibility: 'private',
+        kind: 'refund',
+        amount: 10,
+      }),
+    )
+    await assertFails(
       setDoc(doc(db, 'expenses', 'archived-expense'), {
         ownerId: 'viewer',
         tripId: 'archived-trip',

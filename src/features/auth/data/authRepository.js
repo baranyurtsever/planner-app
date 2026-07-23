@@ -1,6 +1,8 @@
 import {
   createUserWithEmailAndPassword,
   deleteUser,
+  sendEmailVerification,
+  sendPasswordResetEmail,
   signInWithEmailAndPassword,
   signOut,
   updateProfile,
@@ -38,16 +40,22 @@ export async function register({ email, password, displayName, username }) {
     })
 
     await updateProfile(credential.user, { displayName: displayName.trim() })
-    return credential.user
   } catch (error) {
     await deleteUser(credential.user)
     throw error
   }
+
+  await sendEmailVerification(credential.user)
+  return credential.user
 }
 
 export async function login({ email, password }) {
   const credential = await signInWithEmailAndPassword(auth, email, password)
   return credential.user
+}
+
+export function resetPassword(email) {
+  return sendPasswordResetEmail(auth, email.trim())
 }
 
 export function logout() {

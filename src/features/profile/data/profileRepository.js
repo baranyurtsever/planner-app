@@ -1,4 +1,4 @@
-import { collection, getDocs, query, where } from 'firebase/firestore'
+import { collection, doc, getDoc, getDocs, query, where } from 'firebase/firestore'
 import { db } from '../../../infrastructure/firebase/firestoreClient'
 import { normalizeUsername } from '../domain/username'
 
@@ -11,6 +11,11 @@ export async function getProfileByUsername(username) {
   if (snapshot.empty) return null
   const profile = snapshot.docs[0]
   return { id: profile.id, ...profile.data() }
+}
+
+export async function getProfileById(userId) {
+  const snapshot = await getDoc(doc(db, 'profiles', userId))
+  return snapshot.exists() ? { id: snapshot.id, ...snapshot.data() } : null
 }
 
 export async function getPublicTripsForProfile(userId) {

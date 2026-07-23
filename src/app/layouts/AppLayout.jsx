@@ -19,6 +19,22 @@ export function AppLayout() {
             >
               Geziler
             </NavLink>
+            <NavLink
+              to="/app/people"
+              className={({ isActive }) =>
+                `text-sm font-semibold ${isActive ? 'text-teal-800' : 'text-slate-500'}`
+              }
+            >
+              Kişiler
+            </NavLink>
+            <NavLink
+              to="/app/profile"
+              className={({ isActive }) =>
+                `text-sm font-semibold ${isActive ? 'text-teal-800' : 'text-slate-500'}`
+              }
+            >
+              Profilim
+            </NavLink>
           </div>
           <button
             onClick={() => logout()}

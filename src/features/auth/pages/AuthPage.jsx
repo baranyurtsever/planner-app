@@ -1,7 +1,7 @@
 import { Link, Navigate, useNavigate } from 'react-router-dom'
 import { useAuth } from '../authState'
 import { AuthForm } from '../components/AuthForm'
-import { login, register } from '../data/authRepository'
+import { login, register, resetPassword } from '../data/authRepository'
 
 export function AuthPage({ mode }) {
   const { user, loading } = useAuth()
@@ -26,7 +26,7 @@ export function AuthPage({ mode }) {
           {isRegister ? 'Peregrin hesabını oluştur' : 'Gezilerine dön'}
         </h1>
         <div className="mt-7">
-          <AuthForm mode={mode} onSubmit={submit} />
+          <AuthForm mode={mode} onSubmit={submit} onResetPassword={resetPassword} />
         </div>
         <p className="mt-6 text-center text-sm text-slate-500">
           {isRegister ? 'Zaten hesabın var mı?' : 'Henüz hesabın yok mu?'}{' '}

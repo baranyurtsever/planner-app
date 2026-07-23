@@ -173,12 +173,16 @@ service cloud.firestore {
         request.resource.data.ownerId == request.auth.uid &&
         isParticipant(trip(request.resource.data.tripId)) &&
         isActiveTrip(request.resource.data.tripId) &&
+        (!('kind' in request.resource.data) ||
+          request.resource.data.kind in ['planned', 'spent', 'income']) &&
         request.resource.data.visibility in ['private', 'trip', 'profile'];
       allow update: if signedIn() &&
         isActiveTrip(resource.data.tripId) &&
         resource.data.ownerId == request.auth.uid &&
         request.resource.data.ownerId == resource.data.ownerId &&
         request.resource.data.tripId == resource.data.tripId &&
+        (!('kind' in request.resource.data) ||
+          request.resource.data.kind in ['planned', 'spent', 'income']) &&
         request.resource.data.visibility in ['private', 'trip', 'profile'];
       allow delete: if signedIn() &&
         isActiveTrip(resource.data.tripId) &&

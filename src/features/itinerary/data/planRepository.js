@@ -37,11 +37,21 @@ export async function savePlanItem(tripId, planItem) {
     ? doc(db, 'trips', tripId, 'planItems', planItem.id)
     : doc(collection(db, 'trips', tripId, 'planItems'))
 
+  const lat = Number(planItem.locationLat)
+  const lng = Number(planItem.locationLng)
+  const hasCoordinates = planItem.locationLat !== '' && planItem.locationLng !== ''
+
   await setDoc(reference, {
     title: planItem.title.trim(),
     category: planItem.category,
     visibility: planItem.visibility,
     notes: planItem.notes?.trim() || '',
+    location: {
+      name: planItem.locationName?.trim() || '',
+      mapUrl: planItem.mapUrl?.trim() || '',
+      lat: hasCoordinates && Number.isFinite(lat) ? lat : null,
+      lng: hasCoordinates && Number.isFinite(lng) ? lng : null,
+    },
     time: planItem.time,
     updatedAt: serverTimestamp(),
   }, { merge: true })
