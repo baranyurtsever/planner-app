@@ -53,6 +53,14 @@ beforeEach(async () => {
       visibility: 'private',
       status: 'active',
     })
+    await setDoc(doc(db, 'trips', 'archived-trip'), {
+      ownerId: 'owner',
+      memberIds: ['owner', 'viewer'],
+      memberRoles: { owner: 'owner', viewer: 'viewer' },
+      name: 'Eski Gezi',
+      visibility: 'private',
+      status: 'archived',
+    })
     await setDoc(doc(db, 'expenses', 'profile-expense'), {
       ownerId: 'viewer',
       tripId: 'public-trip',
@@ -64,6 +72,11 @@ beforeEach(async () => {
       tripId: 'public-trip',
       visibility: 'private',
       amount: 80,
+    })
+    await setDoc(doc(db, 'friendRequests', 'owner-to-viewer'), {
+      fromId: 'owner',
+      toId: 'viewer',
+      status: 'pending',
     })
   })
 })
@@ -87,6 +100,12 @@ describe('profile integrity', () => {
   it('does not let a profile owner change a reserved username', async () => {
     const db = testEnvironment.authenticatedContext('owner').firestore()
     await assertFails(updateDoc(doc(db, 'profiles', 'owner'), { username: 'someone_else' }))
+  })
+
+  it('rejects username reservations that are not normalized', async () => {
+    const db = testEnvironment.authenticatedContext('owner').firestore()
+    await assertFails(setDoc(doc(db, 'usernames', 'Ada'), { uid: 'owner' }))
+    await assertSucceeds(setDoc(doc(db, 'usernames', 'ada'), { uid: 'owner' }))
   })
 })
 
@@ -129,5 +148,71 @@ describe('user-owned expenses', () => {
     await assertFails(updateDoc(refForOwner, { amount: 1 }))
     await assertSucceeds(updateDoc(refForExpenseOwner, { amount: 150 }))
     await assertSucceeds(deleteDoc(refForExpenseOwner))
+  })
+
+  it('rejects unknown visibility values and archived-trip mutations', async () => {
+    const db = testEnvironment.authenticatedContext('viewer').firestore()
+    await assertFails(
+      setDoc(doc(db, 'expenses', 'invalid-visibility'), {
+        ownerId: 'viewer',
+        tripId: 'public-trip',
+        visibility: 'world',
+        amount: 10,
+      }),
+    )
+    await assertFails(
+      setDoc(doc(db, 'expenses', 'archived-expense'), {
+        ownerId: 'viewer',
+        tripId: 'archived-trip',
+        visibility: 'private',
+        amount: 10,
+      }),
+    )
+  })
+})
+
+describe('plan item integrity', () => {
+  it('requires supported visibility and a valid time representation', async () => {
+    const db = testEnvironment.authenticatedContext('editor').firestore()
+    const planItem = doc(db, 'trips', 'public-trip', 'planItems', 'invalid')
+
+    await assertFails(setDoc(planItem, {
+      title: 'Uçuş',
+      visibility: 'world',
+      time: { kind: 'date', localDate: '2026-08-01' },
+    }))
+    await assertFails(setDoc(planItem, {
+      title: 'Uçuş',
+      visibility: 'trip',
+      time: { kind: 'timed', startsAt: '2026-08-01T08:00:00.000Z' },
+    }))
+    await assertFails(setDoc(planItem, {
+      title: 'Uçuş',
+      visibility: 'trip',
+      time: {
+        kind: 'timed',
+        startsAt: 'tomorrow',
+        endsAt: 'later',
+        startTimeZone: 'local',
+        endTimeZone: 'local',
+      },
+    }))
+  })
+})
+
+describe('friendship integrity', () => {
+  it('only creates a friendship for the two users in the pending request', async () => {
+    const db = testEnvironment.authenticatedContext('viewer').firestore()
+
+    await assertFails(setDoc(doc(db, 'friendships', 'forged'), {
+      acceptedBy: 'viewer',
+      memberIds: ['viewer', 'attacker'],
+      requestId: 'owner-to-viewer',
+    }))
+    await assertSucceeds(setDoc(doc(db, 'friendships', 'valid'), {
+      acceptedBy: 'viewer',
+      memberIds: ['owner', 'viewer'],
+      requestId: 'owner-to-viewer',
+    }))
   })
 })

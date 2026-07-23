@@ -3,6 +3,7 @@ import {
   createDateOnlyPlanTime,
   createTimedPlanTime,
   formatPlanTime,
+  utcToZonedLocal,
   zonedLocalToUtc,
 } from './planTime'
 
@@ -56,6 +57,12 @@ describe('plan time', () => {
   it('converts a destination-local wall clock value to a UTC instant', () => {
     expect(zonedLocalToUtc('2026-08-10T10:00', 'Europe/Istanbul')).toBe(
       '2026-08-10T07:00:00.000Z',
+    )
+  })
+
+  it('converts a UTC instant back to an editable destination-local value', () => {
+    expect(utcToZonedLocal('2026-08-10T07:00:00.000Z', 'Europe/Istanbul')).toBe(
+      '2026-08-10T10:00',
     )
   })
 })

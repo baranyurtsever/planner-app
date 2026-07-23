@@ -1,13 +1,11 @@
 import {
   addDoc,
   collection,
-  deleteDoc,
   doc,
   getDoc,
   onSnapshot,
   query,
   serverTimestamp,
-  setDoc,
   updateDoc,
   where,
 } from 'firebase/firestore'
@@ -35,7 +33,11 @@ export function subscribeToUserTrips(userId, callback, onError = console.error) 
     tripsQuery,
     (snapshot) => {
       const trips = snapshot.docs.map((item) => ({ id: item.id, ...item.data() }))
-      callback(trips.sort((left, right) => left.name.localeCompare(right.name, 'tr')))
+      callback(
+        trips
+          .filter((trip) => trip.status === 'active')
+          .sort((left, right) => left.name.localeCompare(right.name, 'tr')),
+      )
     },
     onError,
   )
@@ -65,56 +67,19 @@ export function archiveTrip(tripId) {
   return updateTrip(tripId, { status: 'archived' })
 }
 
-export function subscribeToPlanItems(tripId, callback, onError = console.error) {
-  return onSnapshot(
-    collection(db, 'trips', tripId, 'planItems'),
-    (snapshot) => {
-      const items = snapshot.docs.map((item) => ({ id: item.id, ...item.data() }))
-      callback(
-        items.sort((left, right) =>
-          (left.time?.startsAt || left.time?.localDate || '').localeCompare(
-            right.time?.startsAt || right.time?.localDate || '',
-          ),
-        ),
-      )
-    },
-    onError,
-  )
+export function updateTripMember(trip, memberId, role) {
+  return updateTrip(trip.id, {
+    memberIds: Array.from(new Set([...trip.memberIds, memberId])),
+    memberRoles: { ...trip.memberRoles, [memberId]: role },
+  })
 }
 
-export function subscribeToPublicPlanItems(tripId, callback, onError = console.error) {
-  const planItemsQuery = query(
-    collection(db, 'trips', tripId, 'planItems'),
-    where('visibility', '==', 'profile'),
-  )
-  return onSnapshot(
-    planItemsQuery,
-    (snapshot) => callback(snapshot.docs.map((item) => ({ id: item.id, ...item.data() }))),
-    onError,
-  )
-}
-
-export async function savePlanItem(tripId, planItem) {
-  const reference = planItem.id
-    ? doc(db, 'trips', tripId, 'planItems', planItem.id)
-    : doc(collection(db, 'trips', tripId, 'planItems'))
-
-  await setDoc(
-    reference,
-    {
-      title: planItem.title.trim(),
-      category: planItem.category,
-      visibility: planItem.visibility,
-      notes: planItem.notes?.trim() || '',
-      time: planItem.time,
-      updatedAt: serverTimestamp(),
-    },
-    { merge: true },
-  )
-
-  return reference.id
-}
-
-export function removePlanItem(tripId, planItemId) {
-  return deleteDoc(doc(db, 'trips', tripId, 'planItems', planItemId))
+export function removeTripMember(trip, memberId) {
+  if (memberId === trip.ownerId) throw new Error('Gezi sahibi katılımcılardan çıkarılamaz.')
+  const memberRoles = { ...trip.memberRoles }
+  delete memberRoles[memberId]
+  return updateTrip(trip.id, {
+    memberIds: trip.memberIds.filter((id) => id !== memberId),
+    memberRoles,
+  })
 }

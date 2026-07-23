@@ -30,10 +30,63 @@ service cloud.firestore {
       return tripData.visibility == 'profile' && tripData.status == 'active';
     }
 
+    function isActiveTrip(tripId) {
+      return trip(tripId).status == 'active';
+    }
+
+    function validUsername(username) {
+      return username is string &&
+        username.size() >= 3 &&
+        username.size() <= 30 &&
+        username.matches('^[a-z0-9_]+$');
+    }
+
+    function validPlanTime(time) {
+      return time is map &&
+        (
+          (
+            time.kind == 'date' &&
+            time.keys().hasOnly(['kind', 'localDate']) &&
+            time.localDate is string &&
+            time.localDate.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
+          ) ||
+          (
+            time.kind == 'timed' &&
+            time.keys().hasOnly([
+              'kind',
+              'startsAt',
+              'endsAt',
+              'startTimeZone',
+              'endTimeZone'
+            ]) &&
+            time.startsAt is string &&
+            time.endsAt is string &&
+            time.startTimeZone is string &&
+            time.endTimeZone is string &&
+            time.startsAt.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}.[0-9]{3}Z$') &&
+            time.endsAt.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}.[0-9]{3}Z$') &&
+            time.endsAt >= time.startsAt &&
+            time.startTimeZone.matches('^[A-Za-z_]+(/[-A-Za-z0-9_+]+)+$') &&
+            time.endTimeZone.matches('^[A-Za-z_]+(/[-A-Za-z0-9_+]+)+$')
+          )
+        );
+    }
+
+    function validTripMembership(tripData) {
+      return tripData.memberIds is list &&
+        tripData.memberRoles is map &&
+        tripData.memberIds.hasAll([tripData.ownerId]) &&
+        tripData.memberRoles.keys().hasOnly(tripData.memberIds) &&
+        tripData.memberIds.hasOnly(tripData.memberRoles.keys()) &&
+        tripData.memberRoles.values().hasOnly(['owner', 'editor', 'viewer']) &&
+        tripData.memberRoles[tripData.ownerId] == 'owner';
+    }
+
     match /profiles/{userId} {
       allow read: if true;
       allow create: if signedIn() &&
         request.auth.uid == userId &&
+        validUsername(request.resource.data.username) &&
         getAfter(
           /databases/$(database)/documents/usernames/$(request.resource.data.username)
         ).data.uid == userId;
@@ -51,6 +104,7 @@ service cloud.firestore {
     match /usernames/{username} {
       allow read: if true;
       allow create: if signedIn() &&
+        validUsername(username) &&
         request.resource.data.uid == request.auth.uid &&
         !exists(/databases/$(database)/documents/usernames/$(username));
       allow update: if false;
@@ -61,16 +115,16 @@ service cloud.firestore {
       allow read: if isParticipant(resource.data) || isPublicTrip(resource.data);
       allow create: if signedIn() &&
         request.resource.data.ownerId == request.auth.uid &&
-        request.resource.data.memberRoles[request.auth.uid] == 'owner' &&
-        request.auth.uid in request.resource.data.memberRoles &&
-        request.resource.data.memberIds.hasAny([request.auth.uid]) &&
+        validTripMembership(request.resource.data) &&
+        request.resource.data.visibility in ['private', 'profile'] &&
         request.resource.data.status == 'active';
       allow update: if
         (
           isOwner(resource.data) &&
           resource.data.status == 'active' &&
           request.resource.data.ownerId == resource.data.ownerId &&
-          request.resource.data.memberRoles[resource.data.ownerId] == 'owner' &&
+          validTripMembership(request.resource.data) &&
+          request.resource.data.visibility in ['private', 'profile'] &&
           request.resource.data.status in ['active', 'archived']
         ) ||
         (
@@ -91,7 +145,15 @@ service cloud.firestore {
       match /planItems/{planItemId} {
         allow read: if isParticipant(trip(tripId)) ||
           (isPublicTrip(trip(tripId)) && resource.data.visibility == 'profile');
-        allow create, update, delete: if trip(tripId).status == 'active' &&
+        allow create: if isActiveTrip(tripId) &&
+          (isOwner(trip(tripId)) || isEditor(trip(tripId))) &&
+          request.resource.data.visibility in ['trip', 'profile'] &&
+          validPlanTime(request.resource.data.time);
+        allow update: if isActiveTrip(tripId) &&
+          (isOwner(trip(tripId)) || isEditor(trip(tripId))) &&
+          request.resource.data.visibility in ['trip', 'profile'] &&
+          validPlanTime(request.resource.data.time);
+        allow delete: if isActiveTrip(tripId) &&
           (isOwner(trip(tripId)) || isEditor(trip(tripId)));
       }
     }
@@ -109,30 +171,50 @@ service cloud.firestore {
         );
       allow create: if signedIn() &&
         request.resource.data.ownerId == request.auth.uid &&
-        isParticipant(trip(request.resource.data.tripId));
+        isParticipant(trip(request.resource.data.tripId)) &&
+        isActiveTrip(request.resource.data.tripId) &&
+        request.resource.data.visibility in ['private', 'trip', 'profile'];
       allow update: if signedIn() &&
+        isActiveTrip(resource.data.tripId) &&
         resource.data.ownerId == request.auth.uid &&
         request.resource.data.ownerId == resource.data.ownerId &&
-        request.resource.data.tripId == resource.data.tripId;
-      allow delete: if signedIn() && resource.data.ownerId == request.auth.uid;
+        request.resource.data.tripId == resource.data.tripId &&
+        request.resource.data.visibility in ['private', 'trip', 'profile'];
+      allow delete: if signedIn() &&
+        isActiveTrip(resource.data.tripId) &&
+        resource.data.ownerId == request.auth.uid;
     }
 
     match /preparationItems/{itemId} {
       allow read: if signedIn() && resource.data.ownerId == request.auth.uid;
-      allow create: if signedIn() && request.resource.data.ownerId == request.auth.uid;
+      allow create: if signedIn() &&
+        request.resource.data.ownerId == request.auth.uid &&
+        isParticipant(trip(request.resource.data.tripId)) &&
+        isActiveTrip(request.resource.data.tripId);
       allow update: if signedIn() &&
+        isActiveTrip(resource.data.tripId) &&
         resource.data.ownerId == request.auth.uid &&
-        request.resource.data.ownerId == resource.data.ownerId;
-      allow delete: if signedIn() && resource.data.ownerId == request.auth.uid;
+        request.resource.data.ownerId == resource.data.ownerId &&
+        request.resource.data.tripId == resource.data.tripId;
+      allow delete: if signedIn() &&
+        isActiveTrip(resource.data.tripId) &&
+        resource.data.ownerId == request.auth.uid;
     }
 
     match /tripSettings/{settingId} {
       allow read: if signedIn() && resource.data.userId == request.auth.uid;
-      allow create: if signedIn() && request.resource.data.userId == request.auth.uid;
+      allow create: if signedIn() &&
+        request.resource.data.userId == request.auth.uid &&
+        isParticipant(trip(request.resource.data.tripId)) &&
+        isActiveTrip(request.resource.data.tripId);
       allow update: if signedIn() &&
+        isActiveTrip(resource.data.tripId) &&
         resource.data.userId == request.auth.uid &&
-        request.resource.data.userId == resource.data.userId;
-      allow delete: if signedIn() && resource.data.userId == request.auth.uid;
+        request.resource.data.userId == resource.data.userId &&
+        request.resource.data.tripId == resource.data.tripId;
+      allow delete: if signedIn() &&
+        isActiveTrip(resource.data.tripId) &&
+        resource.data.userId == request.auth.uid;
     }
 
     match /friendRequests/{requestId} {
@@ -151,9 +233,13 @@ service cloud.firestore {
       allow read: if signedIn() && request.auth.uid in resource.data.memberIds;
       allow create: if signedIn() &&
         request.auth.uid == request.resource.data.acceptedBy &&
-        request.auth.uid in request.resource.data.memberIds &&
         request.resource.data.memberIds.size() == 2 &&
-        get(/databases/$(database)/documents/friendRequests/$(request.resource.data.requestId)).data.toId == request.auth.uid;
+        get(/databases/$(database)/documents/friendRequests/$(request.resource.data.requestId)).data.status == 'pending' &&
+        get(/databases/$(database)/documents/friendRequests/$(request.resource.data.requestId)).data.toId == request.auth.uid &&
+        request.resource.data.memberIds.hasAll([
+          get(/databases/$(database)/documents/friendRequests/$(request.resource.data.requestId)).data.fromId,
+          get(/databases/$(database)/documents/friendRequests/$(request.resource.data.requestId)).data.toId
+        ]);
       allow update: if false;
       allow delete: if signedIn() && request.auth.uid in resource.data.memberIds;
     }

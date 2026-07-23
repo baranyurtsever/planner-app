@@ -4,7 +4,8 @@ import { ErrorMessage, LoadingScreen } from '../../../shared/components/Feedback
 import { formatPlanTime } from '../../itinerary/domain/planTime'
 import { subscribeToPublicTripExpenses } from '../../expenses/data/expenseRepository'
 import { getProfileByUsername } from '../data/profileRepository'
-import { getTrip, subscribeToPublicPlanItems } from '../../trips/data/tripRepository'
+import { getTrip } from '../../trips/data/tripRepository'
+import { subscribeToPublicPlanItems } from '../../itinerary/data/planRepository'
 
 export function PublicTripPage() {
   const { username, tripId } = useParams()

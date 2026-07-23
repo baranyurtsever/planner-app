@@ -6,13 +6,14 @@ import {
   createDateOnlyPlanTime,
   createTimedPlanTime,
   formatPlanTime,
+  utcToZonedLocal,
   zonedLocalToUtc,
 } from '../domain/planTime'
 import {
   removePlanItem,
   savePlanItem,
   subscribeToPlanItems,
-} from '../../trips/data/tripRepository'
+} from '../data/planRepository'
 
 const localTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone
 const initialForm = {
@@ -59,6 +60,24 @@ export function PlanPage() {
     } catch (saveError) {
       setError(saveError.message)
     }
+  }
+
+  function startEditing(item) {
+    const dateOnly = item.time.kind === 'date'
+    setForm({
+      id: item.id,
+      title: item.title,
+      category: item.category,
+      visibility: item.visibility,
+      notes: item.notes || '',
+      dateOnly,
+      localDate: dateOnly ? item.time.localDate : '',
+      startsAtLocal: dateOnly ? '' : utcToZonedLocal(item.time.startsAt, item.time.startTimeZone),
+      endsAtLocal: dateOnly ? '' : utcToZonedLocal(item.time.endsAt, item.time.endTimeZone),
+      startTimeZone: dateOnly ? localTimeZone : item.time.startTimeZone,
+      endTimeZone: dateOnly ? localTimeZone : item.time.endTimeZone,
+    })
+    setShowForm(true)
   }
 
   return (
@@ -199,9 +218,14 @@ export function PlanPage() {
                 {item.notes && <p className="mt-3 text-sm text-slate-600">{item.notes}</p>}
               </div>
               {editable && (
-                <button onClick={() => removePlanItem(trip.id, item.id)} className="text-sm font-bold text-rose-600">
-                  Sil
-                </button>
+                <div className="flex flex-col gap-2">
+                  <button onClick={() => startEditing(item)} className="text-sm font-bold text-teal-700">
+                    Düzenle
+                  </button>
+                  <button onClick={() => removePlanItem(trip.id, item.id)} className="text-sm font-bold text-rose-600">
+                    Sil
+                  </button>
+                </div>
               )}
             </article>
           )

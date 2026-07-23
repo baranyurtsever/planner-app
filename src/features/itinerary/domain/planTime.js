@@ -80,6 +80,26 @@ export function zonedLocalToUtc(localDateTime, timeZone) {
   return new Date(finalInstant).toISOString()
 }
 
+export function utcToZonedLocal(instant, timeZone) {
+  assertUtcInstant(instant, 'Zaman')
+  assertValidTimeZone(timeZone)
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat('en-CA', {
+      timeZone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      hourCycle: 'h23',
+    })
+      .formatToParts(new Date(instant))
+      .filter((part) => part.type !== 'literal')
+      .map((part) => [part.type, part.value]),
+  )
+  return `${parts.year}-${parts.month}-${parts.day}T${parts.hour}:${parts.minute}`
+}
+
 export function formatPlanTime(planTime, locale = 'tr-TR') {
   if (planTime.kind === 'date') {
     return { start: planTime.localDate, end: null }

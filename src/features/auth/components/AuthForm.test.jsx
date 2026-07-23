@@ -3,6 +3,20 @@ import { describe, expect, it, vi } from 'vitest'
 import { AuthForm } from './AuthForm'
 
 describe('AuthForm', () => {
+  it('submits the login entry fields', async () => {
+    const onSubmit = vi.fn().mockResolvedValue()
+    render(<AuthForm mode="login" onSubmit={onSubmit} />)
+
+    fireEvent.change(screen.getByLabelText('E-posta'), { target: { value: 'ada@example.com' } })
+    fireEvent.change(screen.getByLabelText('Şifre'), { target: { value: 'secret123' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Giriş yap' }))
+
+    expect(onSubmit).toHaveBeenCalledWith({
+      email: 'ada@example.com',
+      password: 'secret123',
+    })
+  })
+
   it('submits the public registration fields through its form interface', async () => {
     const onSubmit = vi.fn().mockResolvedValue()
     render(<AuthForm mode="register" onSubmit={onSubmit} />)

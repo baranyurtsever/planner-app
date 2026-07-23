@@ -16,6 +16,9 @@ const PlanPage = lazy(() =>
 const PreparationPage = lazy(() =>
   import('../features/preparation/pages/PreparationPage').then((module) => ({ default: module.PreparationPage })),
 )
+const TripSettingsPage = lazy(() =>
+  import('../features/trip-settings/pages/TripSettingsPage').then((module) => ({ default: module.TripSettingsPage })),
+)
 const PublicProfilePage = lazy(() =>
   import('../features/profile/pages/PublicProfilePage').then((module) => ({ default: module.PublicProfilePage })),
 )
@@ -62,6 +65,7 @@ export function AppRouter() {
               <Route path="plan" element={<PlanPage />} />
               <Route path="budget" element={<BudgetPage />} />
               <Route path="preparation" element={<PreparationPage />} />
+              <Route path="settings" element={<TripSettingsPage />} />
             </Route>
           </Route>
         </Routes>
