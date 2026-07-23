@@ -14,11 +14,46 @@ import {
   setDoc,
   updateDoc,
   where,
+  writeBatch,
 } from 'firebase/firestore'
 import { afterAll, beforeAll, beforeEach, describe, it } from 'vitest'
 
 const projectId = 'demo-peregrin'
 let testEnvironment
+
+function sharedPlan(overrides = {}) {
+  return {
+    scope: 'shared',
+    ownerId: null,
+    title: 'Akşam yemeği',
+    category: 'food',
+    status: 'todo',
+    visibility: 'trip',
+    notes: '',
+    location: { name: '', mapUrl: '', lat: null, lng: null },
+    time: { kind: 'date', localDate: '2026-08-01' },
+    participantMode: 'all',
+    participantIds: [],
+    excludedParticipantIds: [],
+    blockedParticipantIds: [],
+    createdBy: 'owner',
+    ...overrides,
+  }
+}
+
+function personalPlan(overrides = {}) {
+  return {
+    ...sharedPlan(),
+    scope: 'personal',
+    ownerId: 'editor',
+    title: 'Kişisel etkinlik',
+    visibility: 'trip',
+    participantMode: 'selected',
+    participantIds: ['editor'],
+    createdBy: 'editor',
+    ...overrides,
+  }
+}
 
 beforeAll(async () => {
   testEnvironment = await initializeTestEnvironment({
@@ -78,6 +113,35 @@ beforeEach(async () => {
       toId: 'viewer',
       status: 'pending',
     })
+    await setDoc(
+      doc(db, 'trips', 'public-trip', 'planItems', 'shared-plan'),
+      sharedPlan(),
+    )
+    await setDoc(
+      doc(db, 'trips', 'public-trip', 'planItems', 'personal-plan'),
+      personalPlan(),
+    )
+    await setDoc(
+      doc(db, 'trips', 'public-trip', 'planItems', 'private-personal-plan'),
+      personalPlan({ id: 'private-personal-plan', visibility: 'private' }),
+    )
+    await setDoc(
+      doc(db, 'trips', 'public-trip', 'planItems', 'profile-plan'),
+      sharedPlan({ visibility: 'profile' }),
+    )
+    await setDoc(
+      doc(db, 'trips', 'public-trip', 'publicPlanItems', 'profile-plan'),
+      {
+        scope: 'shared',
+        title: 'Akşam yemeği',
+        category: 'food',
+        status: 'todo',
+        visibility: 'profile',
+        notes: '',
+        location: { name: '', mapUrl: '', lat: null, lng: null },
+        time: { kind: 'date', localDate: '2026-08-01' },
+      },
+    )
   })
 })
 
@@ -93,6 +157,8 @@ describe('public reads', () => {
     await assertFails(getDoc(doc(db, 'trips', 'private-trip')))
     await assertSucceeds(getDoc(doc(db, 'expenses', 'profile-expense')))
     await assertFails(getDoc(doc(db, 'expenses', 'private-expense')))
+    await assertFails(getDoc(doc(db, 'trips', 'public-trip', 'planItems', 'profile-plan')))
+    await assertSucceeds(getDoc(doc(db, 'trips', 'public-trip', 'publicPlanItems', 'profile-plan')))
   })
 })
 
@@ -205,6 +271,154 @@ describe('plan item integrity', () => {
         startTimeZone: 'local',
         endTimeZone: 'local',
       },
+    }))
+  })
+
+  it('allows only the trip owner to directly mutate shared plans', async () => {
+    const ownerDb = testEnvironment.authenticatedContext('owner').firestore()
+    const editorDb = testEnvironment.authenticatedContext('editor').firestore()
+    const viewerDb = testEnvironment.authenticatedContext('viewer').firestore()
+
+    await assertSucceeds(updateDoc(
+      doc(ownerDb, 'trips', 'public-trip', 'planItems', 'shared-plan'),
+      { title: 'Yeni başlık' },
+    ))
+    await assertFails(updateDoc(
+      doc(editorDb, 'trips', 'public-trip', 'planItems', 'shared-plan'),
+      { title: 'Editör doğrudan yazamaz' },
+    ))
+    await assertFails(deleteDoc(
+      doc(viewerDb, 'trips', 'public-trip', 'planItems', 'shared-plan'),
+    ))
+  })
+
+  it('allows every participant to own personal plans without giving the trip owner edit access', async () => {
+    const viewerDb = testEnvironment.authenticatedContext('viewer').firestore()
+    const ownerDb = testEnvironment.authenticatedContext('owner').firestore()
+    const newPlan = doc(viewerDb, 'trips', 'public-trip', 'planItems', 'viewer-plan')
+
+    await assertSucceeds(setDoc(newPlan, personalPlan({
+      ownerId: 'viewer',
+      participantIds: ['viewer'],
+      createdBy: 'viewer',
+    })))
+    await assertSucceeds(updateDoc(newPlan, { title: 'Kendi kartım' }))
+    await assertFails(updateDoc(
+      doc(ownerDb, 'trips', 'public-trip', 'planItems', 'personal-plan'),
+      { title: 'Sahip başkasının kartını değiştiremez' },
+    ))
+  })
+
+  it('keeps private personal plans visible only to their owner', async () => {
+    const editorDb = testEnvironment.authenticatedContext('editor').firestore()
+    const ownerDb = testEnvironment.authenticatedContext('owner').firestore()
+    await assertSucceeds(getDoc(
+      doc(editorDb, 'trips', 'public-trip', 'planItems', 'private-personal-plan'),
+    ))
+    await assertFails(getDoc(
+      doc(ownerDb, 'trips', 'public-trip', 'planItems', 'private-personal-plan'),
+    ))
+  })
+
+  it('publishes a sanitized profile projection atomically with its source plan', async () => {
+    const ownerDb = testEnvironment.authenticatedContext('owner').firestore()
+    const sourceRef = doc(ownerDb, 'trips', 'public-trip', 'planItems', 'new-profile-plan')
+    const publicRef = doc(ownerDb, 'trips', 'public-trip', 'publicPlanItems', 'new-profile-plan')
+    const source = sharedPlan({ visibility: 'profile', title: 'Profil planı' })
+    const projection = {
+      scope: source.scope,
+      title: source.title,
+      category: source.category,
+      status: source.status,
+      visibility: source.visibility,
+      notes: source.notes,
+      location: source.location,
+      time: source.time,
+    }
+    const batch = writeBatch(ownerDb)
+    batch.set(sourceRef, source)
+    batch.set(publicRef, projection)
+    await assertSucceeds(batch.commit())
+
+    await assertFails(updateDoc(publicRef, { title: 'Kaynakla uyuşmayan başlık' }))
+  })
+})
+
+describe('plan change proposals', () => {
+  it('allows editors to propose shared changes and only owners to decide', async () => {
+    const editorDb = testEnvironment.authenticatedContext('editor').firestore()
+    const viewerDb = testEnvironment.authenticatedContext('viewer').firestore()
+    const ownerDb = testEnvironment.authenticatedContext('owner').firestore()
+    const proposalData = {
+      proposerId: 'editor',
+      targetItemId: 'shared-plan',
+      action: 'update',
+      patch: { title: 'Önerilen başlık' },
+      status: 'pending',
+    }
+
+    await assertSucceeds(setDoc(
+      doc(editorDb, 'trips', 'public-trip', 'planChangeProposals', 'proposal'),
+      proposalData,
+    ))
+    await assertFails(setDoc(
+      doc(viewerDb, 'trips', 'public-trip', 'planChangeProposals', 'forged'),
+      { ...proposalData, proposerId: 'viewer' },
+    ))
+    await assertSucceeds(getDoc(
+      doc(viewerDb, 'trips', 'public-trip', 'planChangeProposals', 'proposal'),
+    ))
+    await assertFails(updateDoc(
+      doc(editorDb, 'trips', 'public-trip', 'planChangeProposals', 'proposal'),
+      { status: 'approved', decidedBy: 'editor' },
+    ))
+    await assertSucceeds(updateDoc(
+      doc(ownerDb, 'trips', 'public-trip', 'planChangeProposals', 'proposal'),
+      { status: 'approved', decidedBy: 'owner' },
+    ))
+  })
+})
+
+describe('plan participation', () => {
+  it('accepts requests only from trip participants for visible personal plans', async () => {
+    const viewerDb = testEnvironment.authenticatedContext('viewer').firestore()
+    const outsiderDb = testEnvironment.authenticatedContext('outsider').firestore()
+    const request = {
+      planItemId: 'personal-plan',
+      requesterId: 'viewer',
+      itemOwnerId: 'editor',
+      status: 'pending',
+    }
+    await assertSucceeds(setDoc(
+      doc(viewerDb, 'trips', 'public-trip', 'planParticipationRequests', 'request'),
+      request,
+    ))
+    await assertFails(setDoc(
+      doc(outsiderDb, 'trips', 'public-trip', 'planParticipationRequests', 'outsider'),
+      { ...request, requesterId: 'outsider' },
+    ))
+    await assertFails(setDoc(
+      doc(viewerDb, 'trips', 'public-trip', 'planParticipationRequests', 'private'),
+      { ...request, planItemId: 'private-personal-plan' },
+    ))
+  })
+
+  it('lets a participant leave while preventing unrelated participant-array edits', async () => {
+    await testEnvironment.withSecurityRulesDisabled(async (context) => {
+      await updateDoc(
+        doc(context.firestore(), 'trips', 'public-trip', 'planItems', 'personal-plan'),
+        { participantIds: ['editor', 'viewer'] },
+      )
+    })
+    const viewerDb = testEnvironment.authenticatedContext('viewer').firestore()
+    const ref = doc(viewerDb, 'trips', 'public-trip', 'planItems', 'personal-plan')
+    await assertSucceeds(updateDoc(ref, {
+      participantIds: ['editor'],
+      blockedParticipantIds: ['viewer'],
+    }))
+    await assertFails(updateDoc(ref, {
+      participantIds: [],
+      blockedParticipantIds: ['viewer'],
     }))
   })
 })

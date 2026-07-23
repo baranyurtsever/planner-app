@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import {
   canEditExpense,
-  canEditPlanItem,
+  canCreatePersonalPlanItem,
+  canDirectEditPlanItem,
   canManageTrip,
+  canProposePlanChange,
   canViewExpense,
   canViewPlanItem,
   canViewTrip,
@@ -26,10 +28,18 @@ describe('trip access', () => {
     expect(canManageTrip(trip, 'viewer')).toBe(false)
   })
 
-  it('lets owners and editors edit shared plan items', () => {
-    expect(canEditPlanItem(trip, 'owner')).toBe(true)
-    expect(canEditPlanItem(trip, 'editor')).toBe(true)
-    expect(canEditPlanItem(trip, 'viewer')).toBe(false)
+  it('lets only owners directly edit shared plan items', () => {
+    const item = { scope: 'shared' }
+    expect(canDirectEditPlanItem(trip, item, 'owner')).toBe(true)
+    expect(canDirectEditPlanItem(trip, item, 'editor')).toBe(false)
+    expect(canProposePlanChange(trip, item, 'editor')).toBe(true)
+    expect(canProposePlanChange(trip, item, 'viewer')).toBe(false)
+  })
+
+  it('lets every participant create and manage only their own personal items', () => {
+    expect(canCreatePersonalPlanItem(trip, 'viewer')).toBe(true)
+    expect(canDirectEditPlanItem(trip, { scope: 'personal', ownerId: 'viewer' }, 'viewer')).toBe(true)
+    expect(canDirectEditPlanItem(trip, { scope: 'personal', ownerId: 'viewer' }, 'owner')).toBe(false)
   })
 
   it('lets anonymous profile visitors see only public trips and plan items', () => {
@@ -37,6 +47,7 @@ describe('trip access', () => {
     expect(canViewPlanItem(trip, { visibility: 'profile' }, null)).toBe(true)
     expect(canViewPlanItem(trip, { visibility: 'trip' }, null)).toBe(false)
     expect(canViewPlanItem({ ...trip, visibility: 'private' }, { visibility: 'profile' }, null)).toBe(false)
+    expect(canViewPlanItem(trip, { scope: 'personal', ownerId: 'viewer', visibility: 'private' }, 'editor')).toBe(false)
   })
 })
 

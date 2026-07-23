@@ -8,14 +8,14 @@ import { planItemDate } from '../domain/calendar'
 import { formatPlanTime } from '../domain/planTime'
 
 export function RoutePage() {
-  const { trip } = useOutletContext()
+  const { trip, user } = useOutletContext()
   const [items, setItems] = useState([])
   const [selectedDate, setSelectedDate] = useState('')
   const [error, setError] = useState('')
 
   useEffect(
-    () => subscribeToPlanItems(trip.id, setItems, (nextError) => setError(nextError.message)),
-    [trip.id],
+    () => subscribeToPlanItems(trip.id, user.uid, setItems, (nextError) => setError(nextError.message)),
+    [trip.id, user.uid],
   )
 
   const datedItems = useMemo(

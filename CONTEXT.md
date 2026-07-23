@@ -29,8 +29,28 @@ Bir kullanıcının profilini görüntüleyen fakat görüntülediği Geziye kat
 _Avoid_: Gözlemci, katılımcı, üye
 
 **Plan Öğesi**:
-Uçuş, konaklama, etkinlik veya rota durağı gibi Geziye ait ortak planlama kaydı. Sahip ve Düzenleyici tarafından yönetilir; Profil Ziyaretçilerine görünürlüğü ayrıca belirlenir.
-_Avoid_: Kart, kullanıcı planı, etkinlik kaydı
+Uçuş, konaklama, etkinlik veya rota durağı gibi bir Gezi kapsamında zamanlanan kayıt. Bir Plan Öğesi, Ortak Plan Öğesi veya Kişisel Plan Öğesidir.
+_Avoid_: Kart, etkinlik kaydı, kişisel gezi
+
+**Ortak Plan Öğesi**:
+Gezi planını temsil eden ve varsayılan olarak tüm katılımcıları kapsayan Plan Öğesi. Resmî içeriği Gezi Sahibi belirler; diğer yetkili katılımcılar değişiklik önerebilir.
+_Avoid_: Sahipsiz kart, herkesin kartı
+
+**Kişisel Plan Öğesi**:
+Bir Gezi katılımcısına ait olan ve içeriği yalnız sahibi tarafından değiştirilebilen Plan Öğesi. Başka katılımcıların katılması, öğenin sahipliğini değiştirmez.
+_Avoid_: Kişisel gezi, özel gezi
+
+**Plan Katılımı**:
+Bir Gezi katılımcısının Plan Öğesine katılma veya öğeden ayrılma durumu. Katılım, Plan Öğesini düzenleme yetkisi veya sahiplik sağlamaz.
+_Avoid_: Kart üyeliği, ortak sahiplik
+
+**Plan Değişiklik Önerisi**:
+Bir Ortak Plan Öğesinde yapılması istenen fakat Gezi Sahibi onaylayana kadar resmî plana uygulanmayan değişiklik.
+_Avoid_: Taslak kart, bekleyen düzenleme
+
+**Plan Katılım İsteği**:
+Bir Gezi katılımcısının görünür bir Kişisel Plan Öğesine katılmak için öğenin sahibine gönderdiği istek. Profil Ziyaretçileri Plan Katılım İsteği gönderemez.
+_Avoid_: Herkese açık katılım, arkadaşlık isteği
 
 **Plan Zamanı**:
 Zamanlı bir Plan Öğesinin mutlak başlangıç ve bitiş anları ile bu anların gösterileceği başlangıç ve bitiş saat dilimleri. Saat içermeyen bir plan yalnızca yerel tarih taşır.

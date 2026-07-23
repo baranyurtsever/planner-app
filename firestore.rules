@@ -34,6 +34,12 @@ service cloud.firestore {
       return trip(tripId).status == 'active';
     }
 
+    function planItem(tripId, planItemId) {
+      return get(
+        /databases/$(database)/documents/trips/$(tripId)/planItems/$(planItemId)
+      ).data;
+    }
+
     function validUsername(username) {
       return username is string &&
         username.size() >= 3 &&
@@ -68,6 +74,46 @@ service cloud.firestore {
             time.endsAt >= time.startsAt &&
             time.startTimeZone.matches('^[A-Za-z_]+(/[-A-Za-z0-9_+]+)+$') &&
             time.endTimeZone.matches('^[A-Za-z_]+(/[-A-Za-z0-9_+]+)+$')
+          )
+        );
+    }
+
+    function isSharedPlanItem(planData) {
+      return !('scope' in planData) || planData.scope == 'shared';
+    }
+
+    function isPersonalPlanItem(planData) {
+      return 'scope' in planData && planData.scope == 'personal';
+    }
+
+    function validPlanItem(planData) {
+      return planData.title is string &&
+        planData.title.size() > 0 &&
+        planData.category in [
+          'flight',
+          'stay',
+          'transport',
+          'food',
+          'museum',
+          'activity',
+          'entertainment',
+          'shopping',
+          'health',
+          'other'
+        ] &&
+        planData.status in ['todo', 'done', 'postponed', 'cancelled'] &&
+        planData.visibility in ['private', 'trip', 'profile'] &&
+        validPlanTime(planData.time) &&
+        (
+          (
+            isSharedPlanItem(planData) &&
+            planData.visibility in ['trip', 'profile']
+          ) ||
+          (
+            isPersonalPlanItem(planData) &&
+            planData.ownerId is string &&
+            planData.participantIds is list &&
+            planData.participantIds.hasAny([planData.ownerId])
           )
         );
     }
@@ -143,18 +189,273 @@ service cloud.firestore {
       allow delete: if false;
 
       match /planItems/{planItemId} {
-        allow read: if isParticipant(trip(tripId)) ||
-          (isPublicTrip(trip(tripId)) && resource.data.visibility == 'profile');
+        allow read: if
+          (
+            isPersonalPlanItem(resource.data) &&
+            resource.data.visibility == 'private' &&
+            signedIn() &&
+            resource.data.ownerId == request.auth.uid
+          ) ||
+          (
+            resource.data.visibility in ['trip', 'profile'] &&
+            isParticipant(trip(tripId))
+          );
         allow create: if isActiveTrip(tripId) &&
-          (isOwner(trip(tripId)) || isEditor(trip(tripId))) &&
-          request.resource.data.visibility in ['trip', 'profile'] &&
-          validPlanTime(request.resource.data.time);
+          isParticipant(trip(tripId)) &&
+          validPlanItem(request.resource.data) &&
+          (
+            (isSharedPlanItem(request.resource.data) && isOwner(trip(tripId))) ||
+            (
+              isPersonalPlanItem(request.resource.data) &&
+              request.resource.data.ownerId == request.auth.uid
+            )
+          );
         allow update: if isActiveTrip(tripId) &&
-          (isOwner(trip(tripId)) || isEditor(trip(tripId))) &&
-          request.resource.data.visibility in ['trip', 'profile'] &&
-          validPlanTime(request.resource.data.time);
+          validPlanItem(request.resource.data) &&
+          (
+            (
+              isSharedPlanItem(resource.data) &&
+              isSharedPlanItem(request.resource.data) &&
+              isOwner(trip(tripId))
+            ) ||
+            (
+              isPersonalPlanItem(resource.data) &&
+              isPersonalPlanItem(request.resource.data) &&
+              resource.data.ownerId == request.auth.uid &&
+              request.resource.data.ownerId == resource.data.ownerId
+            ) ||
+            (
+              isSharedPlanItem(resource.data) &&
+              isParticipant(trip(tripId)) &&
+              !resource.data.excludedParticipantIds.hasAny([request.auth.uid]) &&
+              request.resource.data.excludedParticipantIds.hasAny([request.auth.uid]) &&
+              request.resource.data.excludedParticipantIds.hasAll(resource.data.excludedParticipantIds) &&
+              request.resource.data.excludedParticipantIds.size() ==
+                resource.data.excludedParticipantIds.size() + 1 &&
+              request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+                'excludedParticipantIds',
+                'updatedAt'
+              ])
+            ) ||
+            (
+              isPersonalPlanItem(resource.data) &&
+              resource.data.ownerId != request.auth.uid &&
+              resource.data.participantIds.hasAny([request.auth.uid]) &&
+              !request.resource.data.participantIds.hasAny([request.auth.uid]) &&
+              request.resource.data.participantIds.hasAll(
+                resource.data.participantIds.removeAll([request.auth.uid])
+              ) &&
+              request.resource.data.participantIds.size() ==
+                resource.data.participantIds.size() - 1 &&
+              request.resource.data.blockedParticipantIds.hasAny([request.auth.uid]) &&
+              request.resource.data.blockedParticipantIds.hasAll(resource.data.blockedParticipantIds) &&
+              request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+                'participantIds',
+                'blockedParticipantIds',
+                'updatedAt'
+              ])
+            ) ||
+            (
+              isPersonalPlanItem(resource.data) &&
+              isOwner(trip(tripId)) &&
+              request.resource.data.ownerId == resource.data.ownerId &&
+              request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+                'participantIds',
+                'blockedParticipantIds',
+                'excludedParticipantIds',
+                'updatedAt'
+              ])
+            )
+          );
         allow delete: if isActiveTrip(tripId) &&
-          (isOwner(trip(tripId)) || isEditor(trip(tripId)));
+          (
+            (isSharedPlanItem(resource.data) && isOwner(trip(tripId))) ||
+            (isPersonalPlanItem(resource.data) && resource.data.ownerId == request.auth.uid)
+          );
+      }
+
+      match /publicPlanItems/{planItemId} {
+        allow read: if isParticipant(trip(tripId)) || isPublicTrip(trip(tripId));
+        allow create, update: if isActiveTrip(tripId) &&
+          request.resource.data.keys().hasOnly([
+            'scope',
+            'title',
+            'category',
+            'status',
+            'visibility',
+            'notes',
+            'location',
+            'time',
+            'updatedAt'
+          ]) &&
+          request.resource.data.visibility == 'profile' &&
+          validPlanTime(request.resource.data.time) &&
+          getAfter(
+            /databases/$(database)/documents/trips/$(tripId)/planItems/$(planItemId)
+          ).data.visibility == 'profile' &&
+          request.resource.data.scope == getAfter(
+            /databases/$(database)/documents/trips/$(tripId)/planItems/$(planItemId)
+          ).data.scope &&
+          request.resource.data.title == getAfter(
+            /databases/$(database)/documents/trips/$(tripId)/planItems/$(planItemId)
+          ).data.title &&
+          request.resource.data.category == getAfter(
+            /databases/$(database)/documents/trips/$(tripId)/planItems/$(planItemId)
+          ).data.category &&
+          request.resource.data.status == getAfter(
+            /databases/$(database)/documents/trips/$(tripId)/planItems/$(planItemId)
+          ).data.status &&
+          request.resource.data.notes == getAfter(
+            /databases/$(database)/documents/trips/$(tripId)/planItems/$(planItemId)
+          ).data.notes &&
+          request.resource.data.location == getAfter(
+            /databases/$(database)/documents/trips/$(tripId)/planItems/$(planItemId)
+          ).data.location &&
+          request.resource.data.time == getAfter(
+            /databases/$(database)/documents/trips/$(tripId)/planItems/$(planItemId)
+          ).data.time &&
+          (
+            (
+              isSharedPlanItem(getAfter(
+                /databases/$(database)/documents/trips/$(tripId)/planItems/$(planItemId)
+              ).data) &&
+              isOwner(trip(tripId))
+            ) ||
+            (
+              isPersonalPlanItem(getAfter(
+                /databases/$(database)/documents/trips/$(tripId)/planItems/$(planItemId)
+              ).data) &&
+              getAfter(
+                /databases/$(database)/documents/trips/$(tripId)/planItems/$(planItemId)
+              ).data.ownerId == request.auth.uid
+            )
+          );
+        allow delete: if isActiveTrip(tripId) &&
+          (
+            isOwner(trip(tripId)) ||
+            (
+              exists(/databases/$(database)/documents/trips/$(tripId)/planItems/$(planItemId)) &&
+              isPersonalPlanItem(planItem(tripId, planItemId)) &&
+              planItem(tripId, planItemId).ownerId == request.auth.uid
+            )
+          );
+      }
+
+      match /planChangeProposals/{proposalId} {
+        allow read: if isParticipant(trip(tripId));
+        allow create: if isActiveTrip(tripId) &&
+          isEditor(trip(tripId)) &&
+          request.resource.data.proposerId == request.auth.uid &&
+          request.resource.data.status == 'pending' &&
+          request.resource.data.action in ['create', 'update', 'delete'] &&
+          request.resource.data.targetItemId is string &&
+          request.resource.data.patch is map &&
+          (
+            (
+              request.resource.data.action == 'create' &&
+              isSharedPlanItem(request.resource.data.patch) &&
+              validPlanItem(request.resource.data.patch)
+            ) ||
+            (
+              request.resource.data.action in ['update', 'delete'] &&
+              exists(/databases/$(database)/documents/trips/$(tripId)/planItems/$(request.resource.data.targetItemId)) &&
+              isSharedPlanItem(
+                get(/databases/$(database)/documents/trips/$(tripId)/planItems/$(request.resource.data.targetItemId)).data
+              )
+            )
+          );
+        allow update: if isActiveTrip(tripId) &&
+          (
+            (
+              isOwner(trip(tripId)) &&
+              resource.data.status == 'pending' &&
+              request.resource.data.status in ['approved', 'rejected'] &&
+              request.resource.data.decidedBy == request.auth.uid &&
+              request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+                'status',
+                'decidedBy',
+                'decidedAt'
+              ])
+            ) ||
+            (
+              isEditor(trip(tripId)) &&
+              resource.data.proposerId == request.auth.uid &&
+              request.resource.data.proposerId == resource.data.proposerId &&
+              request.resource.data.targetItemId == resource.data.targetItemId &&
+              request.resource.data.action == resource.data.action &&
+              resource.data.status == 'pending' &&
+              (
+                (
+                  request.resource.data.status == 'pending' &&
+                  request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+                    'patch',
+                    'updatedAt'
+                  ])
+                ) ||
+                (
+                  request.resource.data.status == 'withdrawn' &&
+                  request.resource.data.withdrawnBy == request.auth.uid &&
+                  request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+                    'status',
+                    'withdrawnBy',
+                    'decidedAt'
+                  ])
+                )
+              )
+            )
+          );
+        allow delete: if false;
+      }
+
+      match /planParticipationRequests/{participationRequestId} {
+        allow read: if isParticipant(trip(tripId));
+        allow create: if isActiveTrip(tripId) &&
+          isParticipant(trip(tripId)) &&
+          request.resource.data.requesterId == request.auth.uid &&
+          request.resource.data.status == 'pending' &&
+          request.resource.data.planItemId is string &&
+          isPersonalPlanItem(planItem(tripId, request.resource.data.planItemId)) &&
+          planItem(tripId, request.resource.data.planItemId).ownerId ==
+            request.resource.data.itemOwnerId &&
+          planItem(tripId, request.resource.data.planItemId).visibility in ['trip', 'profile'] &&
+          !planItem(tripId, request.resource.data.planItemId).participantIds.hasAny([request.auth.uid]) &&
+          !planItem(tripId, request.resource.data.planItemId).blockedParticipantIds.hasAny([request.auth.uid]);
+        allow update: if isActiveTrip(tripId) &&
+          resource.data.status == 'pending' &&
+          planItem(tripId, resource.data.planItemId).ownerId == request.auth.uid &&
+          request.resource.data.status in ['approved', 'rejected'] &&
+          request.resource.data.decidedBy == request.auth.uid &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            'status',
+            'decidedBy',
+            'decidedAt'
+          ]);
+        allow delete: if false;
+      }
+
+      match /planParticipantDetails/{detailId} {
+        allow read: if signedIn() &&
+          detailId.matches('^.*_' + request.auth.uid + '$');
+        allow create: if isActiveTrip(tripId) &&
+          request.resource.data.userId == request.auth.uid &&
+          request.resource.data.planItemId is string &&
+          (
+            (
+              isSharedPlanItem(planItem(tripId, request.resource.data.planItemId)) &&
+              !planItem(tripId, request.resource.data.planItemId)
+                .excludedParticipantIds.hasAny([request.auth.uid])
+            ) ||
+            (
+              isPersonalPlanItem(planItem(tripId, request.resource.data.planItemId)) &&
+              planItem(tripId, request.resource.data.planItemId)
+                .participantIds.hasAny([request.auth.uid])
+            )
+          );
+        allow update: if isActiveTrip(tripId) &&
+          resource.data.userId == request.auth.uid &&
+          request.resource.data.userId == resource.data.userId &&
+          request.resource.data.planItemId == resource.data.planItemId;
+        allow delete: if signedIn() && resource.data.userId == request.auth.uid;
       }
     }
 

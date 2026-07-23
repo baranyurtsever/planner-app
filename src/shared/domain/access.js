@@ -10,6 +10,11 @@ export const VISIBILITY = Object.freeze({
   PROFILE: 'profile',
 })
 
+export const PLAN_SCOPE = Object.freeze({
+  SHARED: 'shared',
+  PERSONAL: 'personal',
+})
+
 export function tripRole(trip, userId) {
   if (!trip || !userId) return null
   if (trip.ownerId === userId) return TRIP_ROLES.OWNER
@@ -30,6 +35,23 @@ export function canEditPlanItem(trip, userId) {
   return role === TRIP_ROLES.OWNER || role === TRIP_ROLES.EDITOR
 }
 
+export function canCreatePersonalPlanItem(trip, userId) {
+  return trip?.status !== 'archived' && isTripParticipant(trip, userId)
+}
+
+export function canDirectEditPlanItem(trip, planItem, userId) {
+  if (trip?.status === 'archived' || !planItem || !userId) return false
+  const scope = planItem.scope || PLAN_SCOPE.SHARED
+  if (scope === PLAN_SCOPE.PERSONAL) return planItem.ownerId === userId
+  return tripRole(trip, userId) === TRIP_ROLES.OWNER
+}
+
+export function canProposePlanChange(trip, planItem, userId) {
+  if (trip?.status === 'archived' || !planItem) return false
+  const scope = planItem.scope || PLAN_SCOPE.SHARED
+  return scope === PLAN_SCOPE.SHARED && tripRole(trip, userId) === TRIP_ROLES.EDITOR
+}
+
 export function canViewTrip(trip, userId) {
   if (!trip) return false
   if (isTripParticipant(trip, userId)) return true
@@ -38,6 +60,12 @@ export function canViewTrip(trip, userId) {
 
 export function canViewPlanItem(trip, planItem, userId) {
   if (!canViewTrip(trip, userId)) return false
+  if (
+    (planItem?.scope || PLAN_SCOPE.SHARED) === PLAN_SCOPE.PERSONAL &&
+    planItem?.visibility === VISIBILITY.PRIVATE
+  ) {
+    return planItem.ownerId === userId
+  }
   if (isTripParticipant(trip, userId)) return true
   return planItem?.visibility === VISIBILITY.PROFILE
 }
