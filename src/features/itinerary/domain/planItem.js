@@ -26,7 +26,56 @@ export const PLAN_CATEGORIES = Object.freeze([
 export const PLAN_CATEGORY_MAP = Object.freeze(
   Object.fromEntries(PLAN_CATEGORIES.map((category) => [category.value, category])),
 )
+const PLAN_CATEGORY_VALUES = new Set(PLAN_CATEGORIES.map((category) => category.value))
 
 export function normalizedPlanScope(item) {
   return item?.scope === PLAN_SCOPES.PERSONAL ? PLAN_SCOPES.PERSONAL : PLAN_SCOPES.SHARED
+}
+
+export function normalizePlanItemForWrite(planItem, userId) {
+  const scope = normalizedPlanScope(planItem)
+  const lat = Number(planItem.locationLat ?? planItem.location?.lat)
+  const lng = Number(planItem.locationLng ?? planItem.location?.lng)
+  const hasCoordinates =
+    (planItem.locationLat ?? planItem.location?.lat ?? '') !== '' &&
+    (planItem.locationLng ?? planItem.location?.lng ?? '') !== ''
+
+  return {
+    scope,
+    ownerId: scope === PLAN_SCOPES.PERSONAL ? (planItem.ownerId || userId) : null,
+    title: planItem.title.trim(),
+    category: PLAN_CATEGORY_VALUES.has(planItem.category) ? planItem.category : 'other',
+    status: planItem.status || PLAN_STATUSES.TODO,
+    visibility: scope === PLAN_SCOPES.PERSONAL
+      ? (planItem.visibility || 'private')
+      : (planItem.visibility === 'profile' ? 'profile' : 'trip'),
+    notes: planItem.notes?.trim() || '',
+    location: {
+      name: (planItem.locationName ?? planItem.location?.name ?? '').trim(),
+      mapUrl: (planItem.mapUrl ?? planItem.location?.mapUrl ?? '').trim(),
+      lat: hasCoordinates && Number.isFinite(lat) ? lat : null,
+      lng: hasCoordinates && Number.isFinite(lng) ? lng : null,
+    },
+    time: planItem.time,
+    participantMode: scope === PLAN_SCOPES.SHARED ? 'all' : 'selected',
+    participantIds: scope === PLAN_SCOPES.PERSONAL
+      ? Array.from(new Set([planItem.ownerId || userId, ...(planItem.participantIds || [])]))
+      : [],
+    excludedParticipantIds: planItem.excludedParticipantIds || [],
+    blockedParticipantIds: planItem.blockedParticipantIds || [],
+  }
+}
+
+export function publicPlanFields(planItem) {
+  const normalized = normalizePlanItemForWrite(planItem, planItem.ownerId)
+  return {
+    scope: normalized.scope,
+    title: normalized.title,
+    category: normalized.category,
+    status: normalized.status,
+    visibility: 'profile',
+    notes: normalized.notes,
+    location: normalized.location,
+    time: normalized.time,
+  }
 }

@@ -17,41 +17,15 @@ import {
   canProposePlanChange,
   PLAN_SCOPE,
 } from '../../../shared/domain/access'
+import {
+  normalizePlanItemForWrite,
+  publicPlanFields,
+} from '../domain/planItem'
 
 const decode = (snapshot) => snapshot.docs.map((item) => ({ id: item.id, ...item.data() }))
 
 function cleanPlanItem(planItem, userId) {
-  const scope = planItem.scope || PLAN_SCOPE.SHARED
-  const lat = Number(planItem.locationLat ?? planItem.location?.lat)
-  const lng = Number(planItem.locationLng ?? planItem.location?.lng)
-  const hasCoordinates =
-    (planItem.locationLat ?? planItem.location?.lat ?? '') !== '' &&
-    (planItem.locationLng ?? planItem.location?.lng ?? '') !== ''
-
-  return {
-    scope,
-    ownerId: scope === PLAN_SCOPE.PERSONAL ? (planItem.ownerId || userId) : null,
-    title: planItem.title.trim(),
-    category: planItem.category,
-    status: planItem.status || 'todo',
-    visibility: scope === PLAN_SCOPE.PERSONAL
-      ? planItem.visibility
-      : (planItem.visibility === 'private' ? 'trip' : planItem.visibility),
-    notes: planItem.notes?.trim() || '',
-    location: {
-      name: (planItem.locationName ?? planItem.location?.name ?? '').trim(),
-      mapUrl: (planItem.mapUrl ?? planItem.location?.mapUrl ?? '').trim(),
-      lat: hasCoordinates && Number.isFinite(lat) ? lat : null,
-      lng: hasCoordinates && Number.isFinite(lng) ? lng : null,
-    },
-    time: planItem.time,
-    participantMode: scope === PLAN_SCOPE.SHARED ? 'all' : 'selected',
-    participantIds: scope === PLAN_SCOPE.PERSONAL
-      ? Array.from(new Set([planItem.ownerId || userId, ...(planItem.participantIds || [])]))
-      : [],
-    excludedParticipantIds: planItem.excludedParticipantIds || [],
-    blockedParticipantIds: planItem.blockedParticipantIds || [],
-  }
+  return normalizePlanItemForWrite(planItem, userId)
 }
 
 function changedPlanPatch(original, cleaned, userId) {
@@ -66,14 +40,7 @@ function changedPlanPatch(original, cleaned, userId) {
 
 function publicPlanPayload(planItem) {
   return {
-    scope: planItem.scope,
-    title: planItem.title,
-    category: planItem.category,
-    status: planItem.status,
-    visibility: 'profile',
-    notes: planItem.notes,
-    location: planItem.location,
-    time: planItem.time,
+    ...publicPlanFields(planItem),
     updatedAt: serverTimestamp(),
   }
 }
@@ -213,12 +180,13 @@ export async function savePlanItem(trip, planItem, userId) {
 
 export async function changePlanItem(trip, planItem, userId, patch) {
   if (canDirectEditPlanItem(trip, planItem, userId)) {
+    const cleaned = cleanPlanItem({ ...planItem, ...patch }, userId)
     const batch = writeBatch(db)
     batch.update(doc(db, 'trips', trip.id, 'planItems', planItem.id), {
-      ...patch,
+      ...cleaned,
       updatedAt: serverTimestamp(),
     })
-    syncPublicPlan(batch, trip.id, planItem.id, { ...planItem, ...patch })
+    syncPublicPlan(batch, trip.id, planItem.id, cleaned)
     await batch.commit()
     return { kind: 'item', id: planItem.id }
   }
@@ -284,8 +252,11 @@ export async function approvePlanProposal(tripId, proposalId, ownerId) {
         transaction.set(publicRef, publicPlanPayload(proposal.patch))
       }
     } else {
-      transaction.update(itemRef, { ...proposal.patch, updatedAt: serverTimestamp() })
-      const updatedItem = { ...itemSnapshot.data(), ...proposal.patch }
+      const updatedItem = normalizePlanItemForWrite(
+        { ...itemSnapshot.data(), ...proposal.patch },
+        itemSnapshot.data().ownerId || proposal.proposerId,
+      )
+      transaction.update(itemRef, { ...updatedItem, updatedAt: serverTimestamp() })
       if (updatedItem.visibility === 'profile') {
         transaction.set(publicRef, publicPlanPayload(updatedItem), { merge: true })
       } else {

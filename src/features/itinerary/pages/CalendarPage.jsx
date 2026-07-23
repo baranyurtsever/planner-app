@@ -5,6 +5,7 @@ import {
   canDirectEditPlanItem,
   canProposePlanChange,
 } from '../../../shared/domain/access'
+import { CalendarScrollFrame } from '../components/CalendarScrollFrame'
 import { PlanItemEditor } from '../components/PlanItemEditor'
 import { ProposalPanel } from '../components/ProposalPanel'
 import {
@@ -339,41 +340,46 @@ export function CalendarPage() {
       {notice && <p className="mt-3 rounded-xl bg-teal-50 px-4 py-3 text-sm font-semibold text-teal-800">{notice}</p>}
       <ProposalPanel trip={trip} user={user} proposals={proposals} />
 
-      <div className="mt-6 overflow-hidden rounded-2xl border border-slate-200 bg-white">
-        <div className="grid border-b border-slate-200 bg-slate-50" style={{ gridTemplateColumns: `64px repeat(${days.length}, minmax(0, 1fr))` }}>
-          <div />
-          {days.map((date) => (
-            <div key={date} className={`border-l border-slate-200 px-2 py-3 text-center ${date === today() ? 'bg-teal-50' : ''}`}>
-              <p className="text-[10px] font-bold uppercase text-slate-400">
-                {new Date(`${date}T12:00:00`).toLocaleDateString('tr-TR', { weekday: 'short' })}
-              </p>
-              <p className="text-sm font-black">{new Date(`${date}T12:00:00`).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' })}</p>
-            </div>
-          ))}
-        </div>
-        <div className="grid border-b border-slate-200" style={{ gridTemplateColumns: `64px repeat(${days.length}, minmax(0, 1fr))` }}>
-          <div className="p-2 text-[10px] font-bold uppercase text-slate-400">Tüm gün</div>
-          {days.map((date) => (
-            <div
-              key={date}
-              onDoubleClick={() => createAt(date, 9 * 60, true)}
-              className="min-h-16 border-l border-slate-200 p-1"
-            >
-              {(allDayByDate[date] || []).map((item) => (
-                <button
-                  key={item.id}
-                  onClick={() => openItem(item)}
-                  className="mb-1 w-full truncate rounded-md bg-slate-800 px-2 py-1 text-left text-xs font-bold text-white"
-                >
-                  {PLAN_CATEGORY_MAP[item.category]?.icon} {item.title}
-                </button>
-              ))}
-            </div>
-          ))}
-        </div>
-
-        <div ref={scrollRef} className="max-h-[70vh] overflow-y-auto">
-          <div
+      <CalendarScrollFrame
+        scrollRef={scrollRef}
+        header={(
+          <div data-testid="calendar-header" className="grid border-b border-slate-200 bg-slate-50" style={{ gridTemplateColumns: `64px repeat(${days.length}, minmax(0, 1fr))` }}>
+            <div />
+            {days.map((date) => (
+              <div key={date} className={`border-l border-slate-200 px-2 py-3 text-center ${date === today() ? 'bg-teal-50' : ''}`}>
+                <p className="text-[10px] font-bold uppercase text-slate-400">
+                  {new Date(`${date}T12:00:00`).toLocaleDateString('tr-TR', { weekday: 'short' })}
+                </p>
+                <p className="text-sm font-black">{new Date(`${date}T12:00:00`).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' })}</p>
+              </div>
+            ))}
+          </div>
+        )}
+        allDay={(
+          <div data-testid="calendar-all-day" className="grid border-b border-slate-200 bg-white" style={{ gridTemplateColumns: `64px repeat(${days.length}, minmax(0, 1fr))` }}>
+            <div className="p-2 text-[10px] font-bold uppercase text-slate-400">Tüm gün</div>
+            {days.map((date) => (
+              <div
+                key={date}
+                onDoubleClick={() => createAt(date, 9 * 60, true)}
+                className="min-h-16 border-l border-slate-200 p-1"
+              >
+                {(allDayByDate[date] || []).map((item) => (
+                  <button
+                    key={item.id}
+                    onClick={() => openItem(item)}
+                    className="mb-1 w-full truncate rounded-md bg-slate-800 px-2 py-1 text-left text-xs font-bold text-white"
+                  >
+                    {PLAN_CATEGORY_MAP[item.category]?.icon} {item.title}
+                  </button>
+                ))}
+              </div>
+            ))}
+          </div>
+        )}
+      >
+        <div
+            data-testid="calendar-time-board"
             ref={boardRef}
             onPointerMove={moveInteraction}
             onPointerUp={endInteraction}
@@ -432,9 +438,8 @@ export function CalendarPage() {
                 </div>
               )
             })}
-          </div>
         </div>
-      </div>
+      </CalendarScrollFrame>
 
       {!items.length && <div className="mt-5"><EmptyState title="Takvim boş" description="Boş bir saate çift tıkla veya Plan ekle düğmesini kullan." /></div>}
 
