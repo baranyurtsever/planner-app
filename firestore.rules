@@ -65,6 +65,18 @@ service cloud.firestore {
       ).data;
     }
 
+    function departurePath(tripId, planItemId, userId) {
+      return /databases/$(database)/documents/trips/$(tripId)/planDepartures/$(planItemId + '_' + userId);
+    }
+
+    function hasDeparted(tripId, planItemId, userId) {
+      return exists(departurePath(tripId, planItemId, userId));
+    }
+
+    function hasDepartedAfter(tripId, planItemId, userId) {
+      return existsAfter(departurePath(tripId, planItemId, userId));
+    }
+
     function publicPlanIsSyncedAfter(tripId, planItemId, planData) {
       let publicPath = /databases/$(database)/documents/trips/$(tripId)/publicPlanItems/$(planItemId);
       return (
@@ -280,6 +292,7 @@ service cloud.firestore {
             (
               isSharedPlanItem(resource.data) &&
               isParticipant(trip(tripId)) &&
+              hasDepartedAfter(tripId, planItemId, request.auth.uid) &&
               request.resource.data.excludedParticipantIds.hasAny([request.auth.uid]) &&
               (
                 (
@@ -301,6 +314,7 @@ service cloud.firestore {
             (
               isPersonalPlanItem(resource.data) &&
               resource.data.ownerId != request.auth.uid &&
+              hasDepartedAfter(tripId, planItemId, request.auth.uid) &&
               resource.data.participantIds.hasAny([request.auth.uid]) &&
               !request.resource.data.participantIds.hasAny([request.auth.uid]) &&
               request.resource.data.participantIds.hasAll(
@@ -506,10 +520,12 @@ service cloud.firestore {
 
       match /planParticipantDetails/{detailId} {
         allow read: if signedIn() &&
-          detailId.matches('^.*_' + request.auth.uid + '$');
+          detailId.matches('^.*_' + request.auth.uid + '$') &&
+          !hasDeparted(tripId, resource.data.planItemId, request.auth.uid);
         allow create: if isActiveTrip(tripId) &&
           request.resource.data.userId == request.auth.uid &&
           request.resource.data.planItemId is string &&
+          !hasDeparted(tripId, request.resource.data.planItemId, request.auth.uid) &&
           (
             (
               isSharedPlanItem(planItem(tripId, request.resource.data.planItemId)) &&
@@ -524,9 +540,20 @@ service cloud.firestore {
           );
         allow update: if isActiveTrip(tripId) &&
           resource.data.userId == request.auth.uid &&
+          !hasDeparted(tripId, resource.data.planItemId, request.auth.uid) &&
           request.resource.data.userId == resource.data.userId &&
           request.resource.data.planItemId == resource.data.planItemId;
         allow delete: if signedIn() && resource.data.userId == request.auth.uid;
+      }
+
+      match /planDepartures/{departureId} {
+        allow read: if isParticipant(trip(tripId));
+        allow create: if isActiveTrip(tripId) &&
+          request.resource.data.userId == request.auth.uid &&
+          request.resource.data.planItemId is string &&
+          departureId == request.resource.data.planItemId + '_' + request.auth.uid &&
+          !exists(departurePath(tripId, request.resource.data.planItemId, request.auth.uid));
+        allow update, delete: if false;
       }
     }
 
@@ -539,17 +566,31 @@ service cloud.firestore {
 
     match /expenses/{expenseId} {
       allow read: if
-        (signedIn() && resource.data.ownerId == request.auth.uid) ||
         (
-          isParticipant(trip(resource.data.tripId)) &&
-          resource.data.visibility in ['trip', 'profile']
-        ) ||
+          !('planItemId' in resource.data) ||
+          !hasDeparted(resource.data.tripId, resource.data.planItemId, resource.data.ownerId)
+        ) &&
         (
-          isPublicTrip(trip(resource.data.tripId)) &&
-          resource.data.visibility == 'profile'
+          (signedIn() && resource.data.ownerId == request.auth.uid) ||
+          (
+            isParticipant(trip(resource.data.tripId)) &&
+            resource.data.visibility in ['trip', 'profile']
+          ) ||
+          (
+            isPublicTrip(trip(resource.data.tripId)) &&
+            resource.data.visibility == 'profile'
+          )
         );
       allow create: if signedIn() &&
         request.resource.data.ownerId == request.auth.uid &&
+        (
+          !('planItemId' in request.resource.data) ||
+          !hasDepartedAfter(
+            request.resource.data.tripId,
+            request.resource.data.planItemId,
+            request.auth.uid
+          )
+        ) &&
         isParticipant(trip(request.resource.data.tripId)) &&
         isActiveTrip(request.resource.data.tripId) &&
         (!('kind' in request.resource.data) ||

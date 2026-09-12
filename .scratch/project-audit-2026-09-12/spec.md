@@ -27,7 +27,7 @@ P1: Gizlilik, veri bütünlüğü ve ana akışı engelleyen hatalar. P2: İşle
 - [x] **P1 / 03** — [Kişisel bilgi formları ana Plan Öğesi formunu tetikliyor](issues/03-todo.md)
 - [x] **P1 / 04** — [Sürükleme başlarken pointer capture sahibi kart kaldırılıyor](issues/04-todo.md)
 - [x] **P1 / 05** — [Notu olmayan kullanıcı Plan Öğesinden ayrılamıyor](issues/05-todo.md)
-- [ ] **P1 / 06** — [Ayrılma sırasında kişisel veri silinmesi kurallarda garanti değil](issues/06-todo.md)
+- [x] **P1 / 06** — [Ayrılma sırasında kişisel veri silinmesi kurallarda garanti değil](issues/06-todo.md)
 - [ ] **P1 / 07** — [Kişisel katılım kuralları yetki sınırlarını korumuyor](issues/07-todo.md)
 - [ ] **P1 / 08** — [Eski form verisi güncel katılımı ve kart alanlarını eziyor](issues/08-todo.md)
 - [ ] **P2 / 09** — [Yeni kişisel kartın ilk kaydı public delete kuralına takılabilir](issues/09-todo.md)

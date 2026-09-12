@@ -494,10 +494,20 @@ describe('plan participation', () => {
     })
     const viewerDb = testEnvironment.authenticatedContext('viewer').firestore()
     const ref = doc(viewerDb, 'trips', 'public-trip', 'planItems', 'personal-plan')
-    await assertSucceeds(updateDoc(ref, {
+    await assertFails(updateDoc(ref, {
       participantIds: ['editor'],
       blockedParticipantIds: ['viewer'],
     }))
+    const leaveBatch = writeBatch(viewerDb)
+    leaveBatch.set(
+      doc(viewerDb, 'trips', 'public-trip', 'planDepartures', 'personal-plan_viewer'),
+      { planItemId: 'personal-plan', userId: 'viewer' },
+    )
+    leaveBatch.update(ref, {
+      participantIds: ['editor'],
+      blockedParticipantIds: ['viewer'],
+    })
+    await assertSucceeds(leaveBatch.commit())
     await assertFails(updateDoc(ref, {
       participantIds: [],
       blockedParticipantIds: ['viewer'],
@@ -519,10 +529,48 @@ describe('plan participation', () => {
     })
     const db = testEnvironment.authenticatedContext('viewer').firestore()
     const batch = writeBatch(db)
+    batch.set(doc(db, 'trips', 'public-trip', 'planDepartures', 'legacy-shared_viewer'), {
+      planItemId: 'legacy-shared',
+      userId: 'viewer',
+    })
     batch.update(doc(db, 'trips', 'public-trip', 'planItems', 'legacy-shared'), {
       excludedParticipantIds: arrayUnion('viewer'),
     })
     await assertSucceeds(batch.commit())
+  })
+
+  it('makes linked personal data inaccessible and rejects new writes after leaving', async () => {
+    await testEnvironment.withSecurityRulesDisabled(async (context) => {
+      const db = context.firestore()
+      await updateDoc(doc(db, 'trips', 'public-trip', 'planItems', 'personal-plan'), {
+        participantIds: ['editor', 'viewer'],
+      })
+      await setDoc(doc(db, 'trips', 'public-trip', 'planParticipantDetails', 'personal-plan_viewer'), {
+        planItemId: 'personal-plan', userId: 'viewer', note: 'Gizli not',
+      })
+      await setDoc(doc(db, 'expenses', 'linked-expense'), {
+        tripId: 'public-trip', planItemId: 'personal-plan', ownerId: 'viewer',
+        title: 'Taksi', amount: 100, visibility: 'private',
+      })
+    })
+    const db = testEnvironment.authenticatedContext('viewer').firestore()
+    const batch = writeBatch(db)
+    batch.set(doc(db, 'trips', 'public-trip', 'planDepartures', 'personal-plan_viewer'), {
+      planItemId: 'personal-plan', userId: 'viewer',
+    })
+    batch.update(doc(db, 'trips', 'public-trip', 'planItems', 'personal-plan'), {
+      participantIds: ['editor'], blockedParticipantIds: ['viewer'],
+    })
+    await assertSucceeds(batch.commit())
+
+    await assertFails(getDoc(doc(db, 'expenses', 'linked-expense')))
+    await assertFails(getDoc(
+      doc(db, 'trips', 'public-trip', 'planParticipantDetails', 'personal-plan_viewer'),
+    ))
+    await assertFails(setDoc(doc(db, 'expenses', 'late-expense'), {
+      tripId: 'public-trip', planItemId: 'personal-plan', ownerId: 'viewer',
+      title: 'Geç yazım', amount: 50, visibility: 'private',
+    }))
   })
 })
 

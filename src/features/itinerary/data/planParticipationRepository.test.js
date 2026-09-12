@@ -3,6 +3,7 @@ import { leavePlanItem } from './planParticipationRepository'
 
 const mocks = vi.hoisted(() => ({
   batchDelete: vi.fn(),
+  batchSet: vi.fn(),
   batchUpdate: vi.fn(),
   commit: vi.fn(),
   getDoc: vi.fn(),
@@ -26,6 +27,7 @@ vi.mock('firebase/firestore', () => ({
   where: (...parts) => ({ parts }),
   writeBatch: () => ({
     delete: mocks.batchDelete,
+    set: mocks.batchSet,
     update: mocks.batchUpdate,
     commit: mocks.commit,
   }),

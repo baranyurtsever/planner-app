@@ -106,6 +106,11 @@ export async function leavePlanItem(tripId, item, userId) {
   const batch = writeBatch(db)
   expenses.forEach((snapshot) => batch.delete(snapshot.ref))
   if (details.exists()) batch.delete(detailsRef)
+  batch.set(doc(db, 'trips', tripId, 'planDepartures', `${item.id}_${userId}`), {
+    planItemId: item.id,
+    userId,
+    departedAt: serverTimestamp(),
+  })
   const itemRef = doc(db, 'trips', tripId, 'planItems', item.id)
   if (normalizedPlanScope(item) === 'shared') {
     batch.update(itemRef, {
