@@ -84,6 +84,7 @@ function CalendarCard({
   item,
   layout,
   ghost = false,
+  hidden = false,
   deleting = false,
   onOpen,
   onInteractionStart,
@@ -94,6 +95,7 @@ function CalendarCard({
   return (
     <article
       role="button"
+      aria-hidden={hidden || undefined}
       tabIndex={0}
       title={`${item.title} · ${timeLabel(item.startMinute)}–${timeLabel(item.endMinute)}`}
       onClick={(event) => {
@@ -112,7 +114,7 @@ function CalendarCard({
         categoryStyles[item.category] || categoryStyles.other
       } ${item.status === 'done' ? 'opacity-65' : ''} ${item.status === 'postponed' ? 'border-dashed' : ''} ${
         item.status === 'cancelled' ? 'line-through opacity-50' : ''
-      } ${ghost ? 'pointer-events-none border-dashed opacity-55' : ''} ${deleting ? 'opacity-35 grayscale' : ''} ${
+      } ${ghost ? 'pointer-events-none border-dashed opacity-55' : ''} ${hidden ? 'invisible' : ''} ${deleting ? 'opacity-35 grayscale' : ''} ${
         editable ? 'cursor-grab touch-none active:cursor-grabbing' : 'cursor-pointer'
       }`}
       style={{
@@ -145,6 +147,7 @@ export function CalendarPage() {
   const scrollRef = useRef(null)
   const boardRef = useRef(null)
   const longPressRef = useRef(null)
+  const suppressClickRef = useRef(false)
   const mobile = useMobileCalendar()
   const anchor = searchParams.get('date') || today()
   const days = useMemo(() => mobile ? [anchor] : weekDates(anchor), [anchor, mobile])
@@ -207,6 +210,10 @@ export function CalendarPage() {
   }
 
   function openItem(item) {
+    if (suppressClickRef.current) {
+      suppressClickRef.current = false
+      return
+    }
     const original = items.find((candidate) => candidate.id === item.id) || item
     setEditor({
       item: original,
@@ -228,6 +235,9 @@ export function CalendarPage() {
       item,
       kind,
       pointerId: event.pointerId,
+      originX: event.clientX,
+      originY: event.clientY,
+      moved: false,
       offsetY: event.clientY - boardTop - itemTop,
       preview: item.time,
     })
@@ -272,6 +282,10 @@ export function CalendarPage() {
       return
     }
     if (event.pointerId !== interaction.pointerId) return
+    if (!interaction.moved && Math.hypot(
+      event.clientX - interaction.originX,
+      event.clientY - interaction.originY,
+    ) < 6) return
     const position = pointerPosition(event)
     let preview
     if (interaction.kind === 'move') {
@@ -287,7 +301,7 @@ export function CalendarPage() {
         minute: position.minute,
       })
     }
-    setInteraction((current) => ({ ...current, preview }))
+    setInteraction((current) => ({ ...current, moved: true, preview }))
   }
 
   async function endInteraction(event) {
@@ -298,6 +312,8 @@ export function CalendarPage() {
     if (event.pointerId !== interaction.pointerId) return
     const current = interaction
     setInteraction(null)
+    if (current.moved) suppressClickRef.current = true
+    if (!current.moved) return
     if (JSON.stringify(current.preview) === JSON.stringify(current.item.time)) return
     try {
       const result = await changePlanItem(trip, current.item, user.uid, { time: current.preview })
@@ -308,7 +324,7 @@ export function CalendarPage() {
   }
 
   const interactionPreview = interaction
-    ? { ...interaction.item, ...calendarInterval({ ...interaction.item, time: interaction.preview }), id: `preview-${interaction.item.id}` }
+    ? { ...interaction.item, ...calendarInterval({ ...interaction.item, time: interaction.preview }), id: `preview-${interaction.item.id}`, interactionPreview: true }
     : null
   const rangeLabel = mobile
     ? new Date(`${anchor}T12:00:00`).toLocaleDateString('tr-TR', { dateStyle: 'full' })
@@ -383,7 +399,10 @@ export function CalendarPage() {
             ref={boardRef}
             onPointerMove={moveInteraction}
             onPointerUp={endInteraction}
-            onPointerCancel={() => setInteraction(null)}
+            onPointerCancel={() => {
+              setInteraction(null)
+              suppressClickRef.current = true
+            }}
             className="relative grid"
             style={{ height: DAY_HEIGHT, gridTemplateColumns: `64px repeat(${days.length}, minmax(0, 1fr))` }}
           >
@@ -398,8 +417,14 @@ export function CalendarPage() {
               const dayItems = officialTimed.filter((item) => item.localDate === date)
               const dayGhosts = proposedTimed.filter((item) => item.localDate === date)
               const preview = interactionPreview?.localDate === date ? [interactionPreview] : []
-              const layoutItems = [...dayItems.filter((item) => item.id !== interaction?.item.id), ...dayGhosts, ...preview]
+              const renderedItems = [...dayItems, ...dayGhosts, ...preview]
+              const layoutItems = [
+                ...dayItems.filter((item) => item.id !== interaction?.item.id),
+                ...dayGhosts,
+                ...preview,
+              ]
               const layouts = layoutOverlappingItems(layoutItems)
+              const persistentLayouts = layoutOverlappingItems([...dayItems, ...dayGhosts])
               return (
                 <div
                   key={date}
@@ -415,14 +440,15 @@ export function CalendarPage() {
                     backgroundSize: `100% ${CALENDAR_ROW_HEIGHT / 2}px`,
                   }}
                 >
-                  {layoutItems.map((item) => (
+                  {renderedItems.map((item) => (
                     <CalendarCard
                       key={item.id}
                       item={item}
-                      layout={layouts[item.id]}
-                      ghost={Boolean(item.proposalId) || item.id.startsWith('preview-')}
+                      layout={layouts[item.id] || persistentLayouts[item.id]}
+                      ghost={Boolean(item.proposalId) || Boolean(item.interactionPreview)}
+                      hidden={item.id === interaction?.item.id}
                       deleting={deletingIds.has(item.id)}
-                      editable={!item.proposalId && !item.id.startsWith('preview-') && (
+                      editable={!item.proposalId && !item.interactionPreview && (
                         canDirectEditPlanItem(trip, item, user.uid) ||
                         canProposePlanChange(trip, item, user.uid)
                       )}
