@@ -87,6 +87,35 @@ describe('CalendarPage pointer interactions', () => {
     expect(getByText(/ÖNERİ @editor.*Ada turu/)).toBeInTheDocument()
   })
 
+  it('groups all-day proposals for the same Plan Item into one selectable ghost', () => {
+    mocks.proposals = ['editor-a', 'editor-b'].map((proposerId, index) => ({
+      id: `all-day-proposal-${index}`,
+      targetItemId: 'new-plan',
+      proposerId,
+      action: 'create',
+      patch: {
+        title: index ? 'Müze günü' : 'Ada turu',
+        category: 'activity',
+        time: { kind: 'date', localDate: '2026-09-12' },
+      },
+    }))
+    const { getByLabelText, getByText } = render(
+      <MemoryRouter initialEntries={['/calendar?date=2026-09-12']}>
+        <Routes>
+          <Route element={<Outlet context={{ trip, user: { uid: 'owner' } }} />}>
+            <Route path="calendar" element={<CalendarPage />} />
+          </Route>
+        </Routes>
+      </MemoryRouter>,
+    )
+
+    const selector = getByLabelText('new-plan önerileri')
+    expect(selector.options).toHaveLength(2)
+    fireEvent.change(selector, { target: { value: 'all-day-proposal-1' } })
+    expect(selector).toHaveValue('all-day-proposal-1')
+    expect(getByText(/ÖNERİ @editor-b.*Müze günü/)).toBeInTheDocument()
+  })
+
   it('groups timed proposals for the same item into one selectable ghost', () => {
     mocks.proposals = ['editor-a', 'editor-b'].map((proposerId, index) => ({
       id: `proposal-${index}`,

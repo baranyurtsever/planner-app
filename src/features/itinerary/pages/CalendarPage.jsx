@@ -226,7 +226,7 @@ export function CalendarPage() {
       return { ...selected, proposalGroupKey: key, proposalOptions: options }
     })
   }, [proposalSelection, proposedTimedVariants])
-  const proposedAllDayByDate = useMemo(() => proposals.reduce((groups, proposal) => {
+  const proposedAllDayVariants = useMemo(() => proposals.reduce((groups, proposal) => {
     if (proposal.action === 'delete') return groups
     const original = items.find((item) => item.id === proposal.targetItemId)
     const candidate = proposal.action === 'create'
@@ -238,9 +238,23 @@ export function CalendarPage() {
       ...candidate,
       proposalId: proposal.id,
       proposerId: proposal.proposerId,
+      targetItemId: proposal.targetItemId,
     }]
     return groups
   }, {}), [items, proposals])
+  const proposedAllDayByDate = useMemo(() => Object.fromEntries(
+    Object.entries(proposedAllDayVariants).map(([date, variants]) => {
+      const groups = new Map()
+      variants.forEach((item) => {
+        const key = `${item.targetItemId}:${date}`
+        groups.set(key, [...(groups.get(key) || []), item])
+      })
+      return [date, [...groups.entries()].map(([key, options]) => {
+        const selected = options.find((option) => option.proposalId === proposalSelection[key]) || options[0]
+        return { ...selected, proposalGroupKey: key, proposalOptions: options }
+      })]
+    }),
+  ), [proposalSelection, proposedAllDayVariants])
   const deletingIds = useMemo(
     () => new Set(proposals.filter((proposal) => proposal.action === 'delete').map((proposal) => proposal.targetItemId)),
     [proposals],
@@ -479,14 +493,19 @@ export function CalendarPage() {
                   </button>
                 ))}
                 {(proposedAllDayByDate[date] || []).map((item) => (
-                  <button
-                    key={item.id}
-                    type="button"
-                    disabled
-                    className="mb-1 w-full truncate rounded-md border border-dashed border-amber-400 bg-amber-100 px-2 py-1 text-left text-xs font-bold text-amber-950 opacity-70"
-                  >
-                    ÖNERİ @{item.proposerId} · {PLAN_CATEGORY_MAP[item.category]?.icon} {item.title}
-                  </button>
+                  <div key={item.proposalGroupKey} className="mb-1 rounded-md border border-dashed border-amber-400 bg-amber-100 px-2 py-1 text-xs font-bold text-amber-950 opacity-70">
+                    <p className="truncate">ÖNERİ @{item.proposerId} · {PLAN_CATEGORY_MAP[item.category]?.icon} {item.title}</p>
+                    {item.proposalOptions.length > 1 && (
+                      <select
+                        aria-label={`${item.targetItemId} önerileri`}
+                        value={item.proposalId}
+                        onChange={(event) => setProposalSelection((current) => ({ ...current, [item.proposalGroupKey]: event.target.value }))}
+                        className="mt-1 w-full rounded border border-amber-300 bg-white px-1 py-0.5 text-[10px]"
+                      >
+                        {item.proposalOptions.map((option) => <option key={option.proposalId} value={option.proposalId}>@{option.proposerId}</option>)}
+                      </select>
+                    )}
+                  </div>
                 ))}
               </div>
             ))}
