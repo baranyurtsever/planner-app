@@ -104,6 +104,14 @@ describe('PlanItemEditor form boundaries', () => {
     expect(screen.getByLabelText('Başlangıç')).toHaveAttribute('step', '900')
   })
 
+  it('closes the modal with Escape', () => {
+    const onClose = vi.fn()
+    render(<PlanItemEditor trip={trip} item={item} user={{ uid: 'owner' }} onClose={onClose} />)
+
+    fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' })
+    expect(onClose).toHaveBeenCalledOnce()
+  })
+
   it('adds a linked expense without submitting the plan item form', async () => {
     render(
       <PlanItemEditor trip={trip} item={item} user={{ uid: 'owner' }} onClose={vi.fn()} />,

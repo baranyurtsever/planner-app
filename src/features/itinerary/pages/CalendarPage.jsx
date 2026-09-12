@@ -96,7 +96,7 @@ function CalendarCard({
       } ${item.status === 'done' ? 'opacity-65' : ''} ${item.status === 'postponed' ? 'border-dashed' : ''} ${
         item.status === 'cancelled' ? 'line-through opacity-50' : ''
       } ${ghost ? 'pointer-events-none border-dashed opacity-55' : ''} ${hidden ? 'invisible' : ''} ${deleting ? 'opacity-35 grayscale' : ''} ${
-        editable ? 'cursor-grab touch-none active:cursor-grabbing' : 'cursor-pointer'
+        editable ? 'cursor-grab touch-pan-y active:cursor-grabbing' : 'cursor-pointer'
       }`}
       style={{
         top: `${(item.startMinute / 60) * CALENDAR_ROW_HEIGHT}px`,
@@ -125,12 +125,15 @@ export function CalendarPage() {
   const [interaction, setInteraction] = useState(null)
   const [notice, setNotice] = useState('')
   const [error, setError] = useState('')
+  const [failedChange, setFailedChange] = useState(null)
+  const [now, setNow] = useState(() => new Date())
   const scrollRef = useRef(null)
   const boardRef = useRef(null)
   const longPressRef = useRef(null)
   const suppressClickRef = useRef(false)
+  const autoScrolledRangeRef = useRef('')
   const mobile = useMobileCalendar()
-  const currentDate = localToday()
+  const currentDate = localToday(now)
   const anchor = normalizeCalendarDate(searchParams.get('date'), currentDate)
   const days = useMemo(() => mobile ? [anchor] : weekDates(anchor), [anchor, mobile])
 
@@ -152,13 +155,23 @@ export function CalendarPage() {
     [trip.id],
   )
   useEffect(() => {
+    const timer = window.setInterval(() => setNow(new Date()), 60_000)
+    return () => window.clearInterval(timer)
+  }, [])
+  useEffect(() => () => {
+    if (longPressRef.current) window.clearTimeout(longPressRef.current.timer)
+  }, [])
+  useEffect(() => {
     if (!scrollRef.current) return
+    const rangeKey = days.join(':')
+    if (autoScrolledRangeRef.current === rangeKey) return
     const firstMinute = items
       .filter((item) => item.time?.kind === 'timed')
       .flatMap((item) => calendarIntervals(item))
       .filter((item) => days.includes(item.localDate))
       .reduce((earliest, item) => Math.min(earliest, item.startMinute), 8 * 60)
     scrollRef.current.scrollTop = Math.max(0, (firstMinute / 60) * CALENDAR_ROW_HEIGHT - 80)
+    autoScrolledRangeRef.current = rangeKey
   }, [days, items])
 
   const officialTimed = useMemo(
@@ -223,9 +236,8 @@ export function CalendarPage() {
     setEditor({ item: null, initialSlot: { localDate: date, startMinute: minute, dateOnly }, readOnly: false })
   }
 
-  function beginInteraction(event, item, kind) {
-    event.stopPropagation()
-    event.currentTarget.setPointerCapture(event.pointerId)
+  function startInteraction(event, item, kind) {
+    event.element.setPointerCapture(event.pointerId)
     const itemTop = (item.startMinute / 60) * CALENDAR_ROW_HEIGHT
     const boardTop = boardRef.current.getBoundingClientRect().top
     setInteraction({
@@ -238,6 +250,29 @@ export function CalendarPage() {
       offsetY: event.clientY - boardTop - itemTop,
       preview: item.time,
     })
+  }
+
+  function beginInteraction(event, item, kind) {
+    event.stopPropagation()
+    const interactionEvent = {
+      element: event.currentTarget,
+      pointerId: event.pointerId,
+      clientX: event.clientX,
+      clientY: event.clientY,
+    }
+    if (event.pointerType !== 'touch') {
+      startInteraction(interactionEvent, item, kind)
+      return
+    }
+    cancelLongPress()
+    longPressRef.current = {
+      x: event.clientX,
+      y: event.clientY,
+      timer: window.setTimeout(() => {
+        longPressRef.current = null
+        startInteraction(interactionEvent, item, kind)
+      }, 450),
+    }
   }
 
   function cancelLongPress() {
@@ -301,6 +336,18 @@ export function CalendarPage() {
     setInteraction((current) => ({ ...current, moved: true, preview }))
   }
 
+  async function commitChange(current) {
+    setError('')
+    setFailedChange(null)
+    try {
+      const result = await changePlanItem(trip, current.item, user.uid, { time: current.preview })
+      setNotice(result.kind === 'proposal' ? 'Takvim değişikliği öneri olarak gönderildi.' : 'Takvim güncellendi.')
+    } catch (nextError) {
+      setError(nextError.message)
+      setFailedChange(current)
+    }
+  }
+
   async function endInteraction(event) {
     if (!interaction) {
       cancelLongPress()
@@ -312,12 +359,7 @@ export function CalendarPage() {
     if (current.moved) suppressClickRef.current = true
     if (!current.moved) return
     if (JSON.stringify(current.preview) === JSON.stringify(current.item.time)) return
-    try {
-      const result = await changePlanItem(trip, current.item, user.uid, { time: current.preview })
-      setNotice(result.kind === 'proposal' ? 'Takvim değişikliği öneri olarak gönderildi.' : 'Takvim güncellendi.')
-    } catch (nextError) {
-      setError(nextError.message)
-    }
+    await commitChange(current)
   }
 
   const interactionPreview = interaction
@@ -354,6 +396,7 @@ export function CalendarPage() {
         </div>
       </div>
       <div className="mt-4"><ErrorMessage message={error} /></div>
+      {failedChange && <button type="button" onClick={() => commitChange(failedChange)} className="mt-2 rounded-full border border-rose-200 px-4 py-2 text-sm font-bold text-rose-700">Yeniden dene</button>}
       {notice && <p className="mt-3 rounded-xl bg-teal-50 px-4 py-3 text-sm font-semibold text-teal-800">{notice}</p>}
       <ProposalPanel trip={trip} user={user} proposals={proposals} items={items} />
 
@@ -468,7 +511,6 @@ export function CalendarPage() {
                     />
                   ))}
                   {date === currentDate && (() => {
-                    const now = new Date()
                     const minute = now.getHours() * 60 + now.getMinutes()
                     return <div className="pointer-events-none absolute inset-x-0 z-40 border-t-2 border-rose-500" style={{ top: (minute / 60) * CALENDAR_ROW_HEIGHT }} />
                   })()}

@@ -1,6 +1,6 @@
 # 17 — Mobil takvim ve hata kurtarma kabul kriterleri eksik
 
-Status: needs-triage
+Status: resolved
 Priority: P2
 Type: task
 Evidence: Kod incelemesi; özel senaryo henüz ayrı testle çalıştırılmadı.
@@ -17,9 +17,9 @@ Kart hareketi uzun basma beklemeden pointerdown ile başlıyor; touch-none kayd�
 
 ## Yapılacaklar ve kabul kriteri
 
-- [ ] Uzun basma ve kaydırmayı ayır; otomatik scroll'u ilk yükleme/tarih değişimine sınırla; zaman çizgisi timer, yeniden deneme ve klavye modal davranışı ekle.
+- [x] Uzun basma ve kaydırmayı ayır; otomatik scroll'u ilk yükleme/tarih değişimine sınırla; zaman çizgisi timer, yeniden deneme ve klavye modal davranışı ekle.
 
 ## Comments
 
 2026-09-12: Genel proje taramasında kaydedildi. Bu ticket uygulama değişikliği içermez.
-
+2026-09-12: Touch kart sürüklemesi 450 ms uzun basmaya alındı ve dikey kaydırma korundu. Otomatik scroll tarih aralığı başına tek çalışıyor; şimdi çizgisi dakikada yenileniyor. Başarısız takvim yazımına yeniden deneme, editör modalına Escape ve Tab focus sınırı eklendi; etkileşim testleri yazıldı.

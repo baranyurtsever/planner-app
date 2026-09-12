@@ -129,4 +129,44 @@ describe('CalendarPage pointer interactions', () => {
     fireEvent.pointerCancel(board, { pointerId: 8 })
     expect(mocks.changePlanItem).not.toHaveBeenCalled()
   })
+
+  it('keeps touch scrolling available until a card long press activates', () => {
+    const { container } = render(
+      <MemoryRouter initialEntries={['/calendar?date=2026-09-12']}>
+        <Routes>
+          <Route element={<Outlet context={{ trip, user: { uid: 'owner' } }} />}>
+            <Route path="calendar" element={<CalendarPage />} />
+          </Route>
+        </Routes>
+      </MemoryRouter>,
+    )
+    const card = container.querySelector('article[title^="Akşam yemeği"]')
+    fireEvent.pointerDown(card, { pointerId: 9, pointerType: 'touch', button: 0, clientX: 700, clientY: 770 })
+
+    expect(card).toHaveClass('touch-pan-y')
+    expect(HTMLElement.prototype.setPointerCapture).not.toHaveBeenCalled()
+  })
+
+  it('offers retry after a failed calendar write', async () => {
+    mocks.changePlanItem.mockRejectedValueOnce(new Error('Bağlantı kesildi')).mockResolvedValueOnce({ kind: 'item' })
+    const { container, getByRole } = render(
+      <MemoryRouter initialEntries={['/calendar?date=2026-09-12']}>
+        <Routes>
+          <Route element={<Outlet context={{ trip, user: { uid: 'owner' } }} />}>
+            <Route path="calendar" element={<CalendarPage />} />
+          </Route>
+        </Routes>
+      </MemoryRouter>,
+    )
+    const board = container.querySelector('[data-testid="calendar-time-board"]')
+    board.getBoundingClientRect = () => ({ top: 0, left: 0, width: 764, height: 1536 })
+    const card = container.querySelector('article[title^="Akşam yemeği"]')
+    fireEvent.pointerDown(card, { pointerId: 10, button: 0, clientX: 700, clientY: 770 })
+    fireEvent.pointerMove(board, { pointerId: 10, clientX: 590, clientY: 850 })
+    fireEvent.pointerUp(board, { pointerId: 10, clientX: 590, clientY: 850 })
+
+    const retry = await waitFor(() => getByRole('button', { name: 'Yeniden dene' }))
+    fireEvent.click(retry)
+    await waitFor(() => expect(mocks.changePlanItem).toHaveBeenCalledTimes(2))
+  })
 })

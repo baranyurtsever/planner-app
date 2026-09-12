@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { tripRole, TRIP_ROLES } from '../../../shared/domain/access'
 import { ErrorMessage } from '../../../shared/components/Feedback'
 import {
@@ -85,6 +85,7 @@ export function PlanItemEditor({
   const [form, setForm] = useState(() => initialForm(item, initialSlot, user.uid))
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
+  const dialogRef = useRef(null)
   const role = tripRole(trip, user.uid)
   const canChooseShared = role === TRIP_ROLES.OWNER || role === TRIP_ROLES.EDITOR
   const effectiveReadOnly = readOnly
@@ -93,6 +94,34 @@ export function PlanItemEditor({
     if (item) return form.scope === PLAN_SCOPES.SHARED ? 'Ortak Planı düzenle' : 'Kişisel Planı düzenle'
     return 'Yeni Plan Öğesi'
   }, [effectiveReadOnly, form.scope, item])
+
+  useEffect(() => {
+    const dialog = dialogRef.current
+    if (!dialog) return undefined
+    const focusable = () => [...dialog.querySelectorAll('button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled])')]
+    focusable()[0]?.focus()
+    function handleKeyDown(event) {
+      if (event.key === 'Escape') {
+        event.preventDefault()
+        onClose()
+        return
+      }
+      if (event.key !== 'Tab') return
+      const elements = focusable()
+      if (!elements.length) return
+      const first = elements[0]
+      const last = elements[elements.length - 1]
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault()
+        last.focus()
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault()
+        first.focus()
+      }
+    }
+    dialog.addEventListener('keydown', handleKeyDown)
+    return () => dialog.removeEventListener('keydown', handleKeyDown)
+  }, [onClose])
 
   async function submit(event) {
     event.preventDefault()
@@ -121,12 +150,12 @@ export function PlanItemEditor({
     <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/50 p-4 backdrop-blur-sm" onMouseDown={(event) => {
       if (event.target === event.currentTarget) onClose()
     }}>
-      <div className="max-h-[92vh] w-full max-w-4xl overflow-y-auto rounded-3xl bg-white shadow-2xl">
+      <div ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="plan-item-editor-title" className="max-h-[92vh] w-full max-w-4xl overflow-y-auto rounded-3xl bg-white shadow-2xl">
         <form id="plan-item-editor-form" onSubmit={submit}>
         <header className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-100 bg-white/95 px-6 py-5 backdrop-blur">
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.2em] text-teal-700">{form.scope === PLAN_SCOPES.SHARED ? 'Ortak plan' : 'Kişisel plan'}</p>
-            <h2 className="mt-1 text-2xl font-black">{title}</h2>
+            <h2 id="plan-item-editor-title" className="mt-1 text-2xl font-black">{title}</h2>
           </div>
           <button type="button" onClick={onClose} className="rounded-full px-3 py-2 text-slate-500 hover:bg-slate-100">✕</button>
         </header>
