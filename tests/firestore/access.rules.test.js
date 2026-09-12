@@ -17,6 +17,7 @@ import {
   writeBatch,
 } from 'firebase/firestore'
 import { afterAll, beforeAll, beforeEach, describe, it } from 'vitest'
+import { expect } from 'vitest'
 
 const projectId = 'demo-peregrin'
 let testEnvironment
@@ -77,6 +78,19 @@ beforeEach(async () => {
       memberIds: ['owner', 'editor', 'viewer'],
       memberRoles: { owner: 'owner', editor: 'editor', viewer: 'viewer' },
       name: 'Bangkok',
+      locationName: 'Tayland',
+      visibility: 'profile',
+      status: 'active',
+    })
+    await setDoc(doc(db, 'publicTrips', 'public-trip'), {
+      name: 'Bangkok',
+      locationName: 'Tayland',
+      visibility: 'profile',
+      status: 'active',
+    })
+    await setDoc(doc(db, 'profiles', 'owner', 'publicTrips', 'public-trip'), {
+      name: 'Bangkok',
+      locationName: 'Tayland',
       visibility: 'profile',
       status: 'active',
     })
@@ -150,11 +164,19 @@ afterAll(async () => {
 })
 
 describe('public reads', () => {
-  it('allows anonymous visitors to read profiles and public trips', async () => {
+  it('keeps trip membership private while exposing sanitized public projections', async () => {
     const db = testEnvironment.unauthenticatedContext().firestore()
     await assertSucceeds(getDoc(doc(db, 'profiles', 'owner')))
-    await assertSucceeds(getDoc(doc(db, 'trips', 'public-trip')))
+    await assertFails(getDoc(doc(db, 'trips', 'public-trip')))
     await assertFails(getDoc(doc(db, 'trips', 'private-trip')))
+    const publicTrip = await assertSucceeds(getDoc(doc(db, 'publicTrips', 'public-trip')))
+    const profileTrip = await assertSucceeds(
+      getDoc(doc(db, 'profiles', 'owner', 'publicTrips', 'public-trip')),
+    )
+    expect(publicTrip.data()).not.toHaveProperty('memberIds')
+    expect(publicTrip.data()).not.toHaveProperty('memberRoles')
+    expect(profileTrip.data()).not.toHaveProperty('memberIds')
+    expect(profileTrip.data()).not.toHaveProperty('memberRoles')
     await assertSucceeds(getDoc(doc(db, 'expenses', 'profile-expense')))
     await assertFails(getDoc(doc(db, 'expenses', 'private-expense')))
     await assertFails(getDoc(doc(db, 'trips', 'public-trip', 'planItems', 'profile-plan')))
@@ -176,6 +198,21 @@ describe('profile integrity', () => {
 })
 
 describe('trip roles', () => {
+  it('lets the owner atomically update sanitized public trip projections', async () => {
+    const db = testEnvironment.authenticatedContext('owner').firestore()
+    const batch = writeBatch(db)
+    const projection = {
+      name: 'Bangkok 2027',
+      locationName: 'Tayland',
+      visibility: 'profile',
+      status: 'active',
+    }
+    batch.update(doc(db, 'trips', 'public-trip'), { name: projection.name })
+    batch.set(doc(db, 'publicTrips', 'public-trip'), projection)
+    batch.set(doc(db, 'profiles', 'owner', 'publicTrips', 'public-trip'), projection)
+    await assertSucceeds(batch.commit())
+  })
+
   it('allows a participant to query their trips', async () => {
     const db = testEnvironment.authenticatedContext('viewer').firestore()
     const tripsQuery = query(

@@ -30,6 +30,31 @@ service cloud.firestore {
       return tripData.visibility == 'profile' && tripData.status == 'active';
     }
 
+    function canManagePublicTrip(tripId) {
+      return isOwner(getAfter(/databases/$(database)/documents/trips/$(tripId)).data) ||
+        isEditor(getAfter(/databases/$(database)/documents/trips/$(tripId)).data);
+    }
+
+    function validPublicTripProjection(tripId, projectionData) {
+      let source = getAfter(/databases/$(database)/documents/trips/$(tripId)).data;
+      return projectionData.keys().hasOnly([
+          'name',
+          'locationName',
+          'visibility',
+          'status',
+          'startDate',
+          'endDate',
+          'coverImageUrl',
+          'updatedAt'
+        ]) &&
+        projectionData.name == source.name &&
+        projectionData.locationName == source.locationName &&
+        projectionData.visibility == 'profile' &&
+        projectionData.status == 'active' &&
+        source.visibility == 'profile' &&
+        source.status == 'active';
+    }
+
     function isActiveTrip(tripId) {
       return trip(tripId).status == 'active';
     }
@@ -140,6 +165,14 @@ service cloud.firestore {
         request.auth.uid == userId &&
         request.resource.data.username == resource.data.username;
       allow delete: if false;
+
+      match /publicTrips/{tripId} {
+        allow read: if true;
+        allow create, update: if canManagePublicTrip(tripId) &&
+          getAfter(/databases/$(database)/documents/trips/$(tripId)).data.memberIds.hasAny([userId]) &&
+          validPublicTripProjection(tripId, request.resource.data);
+        allow delete: if canManagePublicTrip(tripId);
+      }
     }
 
     match /accounts/{userId} {
@@ -158,7 +191,7 @@ service cloud.firestore {
     }
 
     match /trips/{tripId} {
-      allow read: if isParticipant(resource.data) || isPublicTrip(resource.data);
+      allow read: if isParticipant(resource.data);
       allow create: if signedIn() &&
         request.resource.data.ownerId == request.auth.uid &&
         validTripMembership(request.resource.data) &&
@@ -457,6 +490,13 @@ service cloud.firestore {
           request.resource.data.planItemId == resource.data.planItemId;
         allow delete: if signedIn() && resource.data.userId == request.auth.uid;
       }
+    }
+
+    match /publicTrips/{tripId} {
+      allow read: if true;
+      allow create, update: if canManagePublicTrip(tripId) &&
+        validPublicTripProjection(tripId, request.resource.data);
+      allow delete: if canManagePublicTrip(tripId);
     }
 
     match /expenses/{expenseId} {

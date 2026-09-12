@@ -3,8 +3,8 @@ import { useParams } from 'react-router-dom'
 import { ErrorMessage, LoadingScreen } from '../../../shared/components/Feedback'
 import { formatPlanTime } from '../../itinerary/domain/planTime'
 import { subscribeToPublicTripExpenses } from '../../expenses/data/expenseRepository'
-import { getProfileByUsername } from '../data/profileRepository'
-import { getTrip } from '../../trips/data/tripRepository'
+import { getProfileByUsername, getPublicTripForProfile } from '../data/profileRepository'
+import { getPublicTrip } from '../../trips/data/tripRepository'
 import { subscribeToPublicPlanItems } from '../../itinerary/data/planRepository'
 
 export function PublicTripPage() {
@@ -17,9 +17,14 @@ export function PublicTripPage() {
 
   useEffect(() => {
     let active = true
-    Promise.all([getProfileByUsername(username), getTrip(tripId)])
-      .then(([nextProfile, nextTrip]) => {
-        if (!nextProfile || !nextTrip || !nextTrip.memberIds.includes(nextProfile.id)) {
+    getProfileByUsername(username)
+      .then(async (nextProfile) => {
+        if (!nextProfile) throw new Error('Herkese açık Gezi bulunamadı.')
+        const [nextTrip, profileTrip] = await Promise.all([
+          getPublicTrip(tripId),
+          getPublicTripForProfile(nextProfile.id, tripId),
+        ])
+        if (!nextTrip || !profileTrip) {
           throw new Error('Herkese açık Gezi bulunamadı.')
         }
         if (active) {

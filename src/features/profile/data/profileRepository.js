@@ -19,12 +19,11 @@ export async function getProfileById(userId) {
 }
 
 export async function getPublicTripsForProfile(userId) {
-  const tripsQuery = query(
-    collection(db, 'trips'),
-    where('memberIds', 'array-contains', userId),
-    where('visibility', '==', 'profile'),
-    where('status', '==', 'active'),
-  )
-  const snapshot = await getDocs(tripsQuery)
+  const snapshot = await getDocs(collection(db, 'profiles', userId, 'publicTrips'))
   return snapshot.docs.map((item) => ({ id: item.id, ...item.data() }))
+}
+
+export async function getPublicTripForProfile(userId, tripId) {
+  const snapshot = await getDoc(doc(db, 'profiles', userId, 'publicTrips', tripId))
+  return snapshot.exists() ? { id: snapshot.id, ...snapshot.data() } : null
 }
