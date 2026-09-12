@@ -87,6 +87,38 @@ describe('CalendarPage pointer interactions', () => {
     expect(getByText(/ÖNERİ @editor.*Ada turu/)).toBeInTheDocument()
   })
 
+  it('groups timed proposals for the same item into one selectable ghost', () => {
+    mocks.proposals = ['editor-a', 'editor-b'].map((proposerId, index) => ({
+      id: `proposal-${index}`,
+      targetItemId: 'plan',
+      proposerId,
+      action: 'update',
+      patch: {
+        time: {
+          kind: 'timed',
+          startsAt: `2026-09-12T${index ? '11' : '10'}:00:00.000Z`,
+          endsAt: `2026-09-12T${index ? '12' : '11'}:00:00.000Z`,
+          startTimeZone: 'Europe/Istanbul',
+          endTimeZone: 'Europe/Istanbul',
+        },
+      },
+    }))
+    const { getByLabelText } = render(
+      <MemoryRouter initialEntries={['/calendar?date=2026-09-12']}>
+        <Routes>
+          <Route element={<Outlet context={{ trip, user: { uid: 'owner' } }} />}>
+            <Route path="calendar" element={<CalendarPage />} />
+          </Route>
+        </Routes>
+      </MemoryRouter>,
+    )
+
+    const selector = getByLabelText('Akşam yemeği önerileri')
+    expect(selector.options).toHaveLength(2)
+    fireEvent.change(selector, { target: { value: 'proposal-1' } })
+    expect(selector).toHaveValue('proposal-1')
+  })
+
   it('keeps the capture owner mounted, commits an outside drop, and suppresses its click', async () => {
     const { container, queryByTestId } = render(
       <MemoryRouter initialEntries={['/calendar?date=2026-09-12']}>

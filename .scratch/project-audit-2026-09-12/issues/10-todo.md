@@ -23,3 +23,4 @@ Sabit öneri karara bağlandıktan sonra her yeni hareket rastgele yeni belge a�
 
 2026-09-12: Genel proje taramasında kaydedildi. Bu ticket uygulama değişikliği içermez.
 2026-09-12: Öneriler target/proposer anahtarıyla tekilleştirildi; karara bağlanan yuva güvenli biçimde yeniden kullanılabilir yapıldı. Panel alan bazlı mevcut/önerilen karşılaştırması ve kart gruplaması kazandı; zamanlı ve tüm-gün önerilerinde öneren kullanıcıyla hayalet önizleme eklendi. React ve Firestore emulator testleriyle doğrulandı.
+2026-09-12: Code review sonrası aynı Plan Öğesine ve güne ait zaman önerileri tek hayalet yuvada toplandı; hayalet içindeki kullanıcı seçicisiyle öneri varyantları arasında geçiş eklendi.

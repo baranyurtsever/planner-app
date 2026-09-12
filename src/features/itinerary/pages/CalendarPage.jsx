@@ -70,6 +70,7 @@ function CalendarCard({
   onOpen,
   onInteractionStart,
   editable,
+  onSelectProposal,
 }) {
   const category = PLAN_CATEGORY_MAP[item.category] || PLAN_CATEGORY_MAP.other
   const height = Math.max(18, ((item.endMinute - item.startMinute) / 60) * CALENDAR_ROW_HEIGHT)
@@ -95,7 +96,7 @@ function CalendarCard({
         categoryStyles[item.category] || categoryStyles.other
       } ${item.status === 'done' ? 'opacity-65' : ''} ${item.status === 'postponed' ? 'border-dashed' : ''} ${
         item.status === 'cancelled' ? 'line-through opacity-50' : ''
-      } ${ghost ? 'pointer-events-none border-dashed opacity-55' : ''} ${hidden ? 'invisible' : ''} ${deleting ? 'opacity-35 grayscale' : ''} ${
+      } ${ghost ? 'border-dashed opacity-65' : ''} ${hidden ? 'invisible' : ''} ${deleting ? 'opacity-35 grayscale' : ''} ${
         editable ? 'cursor-grab touch-pan-y active:cursor-grabbing' : 'cursor-pointer'
       }`}
       style={{
@@ -110,6 +111,17 @@ function CalendarCard({
         {ghost ? `ÖNERİ @${item.proposerId || '—'} · ` : ''}{layout.columnCount > 1 ? '⚠ ' : ''}{category.icon} {timeLabel(item.startMinute)}–{timeLabel(item.endMinute)}
       </p>
       <h3 className="truncate text-xs font-black">{item.title}</h3>
+      {ghost && item.proposalOptions?.length > 1 && (
+        <select
+          aria-label={`${item.title} önerileri`}
+          value={item.proposalId}
+          onClick={(event) => event.stopPropagation()}
+          onChange={(event) => onSelectProposal(item.proposalGroupKey, event.target.value)}
+          className="mt-1 max-w-full rounded border border-amber-500 bg-white/90 text-[10px] font-bold"
+        >
+          {item.proposalOptions.map((option) => <option key={option.proposalId} value={option.proposalId}>@{option.proposerId}</option>)}
+        </select>
+      )}
       {height >= 48 && item.location?.name && <p className="truncate text-[10px] opacity-70">{item.location.name}</p>}
       {editable && <span data-resize-edge="end" className="absolute inset-x-0 bottom-0 h-2 cursor-ns-resize" />}
     </article>
@@ -127,6 +139,7 @@ export function CalendarPage() {
   const [error, setError] = useState('')
   const [failedChange, setFailedChange] = useState(null)
   const [optimisticTimes, setOptimisticTimes] = useState({})
+  const [proposalSelection, setProposalSelection] = useState({})
   const [now, setNow] = useState(() => new Date())
   const scrollRef = useRef(null)
   const boardRef = useRef(null)
@@ -192,16 +205,27 @@ export function CalendarPage() {
     () => displayedItems.filter((item) => item.time?.kind === 'timed').flatMap(calendarIntervals),
     [displayedItems],
   )
-  const proposedTimed = useMemo(() => proposals.flatMap((proposal) => {
+  const proposedTimedVariants = useMemo(() => proposals.flatMap((proposal) => {
     if (proposal.action === 'delete') return []
     const original = items.find((item) => item.id === proposal.targetItemId)
     const candidate = proposal.action === 'create'
       ? { id: `proposal-${proposal.id}`, ...proposal.patch }
       : { ...original, ...proposal.patch, id: `proposal-${proposal.id}` }
     return candidate?.time?.kind === 'timed'
-      ? calendarIntervals(candidate).map((interval) => ({ ...interval, proposalId: proposal.id, proposerId: proposal.proposerId }))
+      ? calendarIntervals(candidate).map((interval) => ({ ...interval, proposalId: proposal.id, proposerId: proposal.proposerId, targetItemId: proposal.targetItemId }))
       : []
   }), [items, proposals])
+  const proposedTimed = useMemo(() => {
+    const groups = new Map()
+    proposedTimedVariants.forEach((item) => {
+      const key = `${item.targetItemId}:${item.localDate}`
+      groups.set(key, [...(groups.get(key) || []), item])
+    })
+    return [...groups.entries()].map(([key, options]) => {
+      const selected = options.find((option) => option.proposalId === proposalSelection[key]) || options[0]
+      return { ...selected, proposalGroupKey: key, proposalOptions: options }
+    })
+  }, [proposalSelection, proposedTimedVariants])
   const proposedAllDayByDate = useMemo(() => proposals.reduce((groups, proposal) => {
     if (proposal.action === 'delete') return groups
     const original = items.find((item) => item.id === proposal.targetItemId)
@@ -529,6 +553,7 @@ export function CalendarPage() {
                       )}
                       onOpen={openItem}
                       onInteractionStart={beginInteraction}
+                      onSelectProposal={(key, proposalId) => setProposalSelection((current) => ({ ...current, [key]: proposalId }))}
                     />
                   ))}
                   {date === currentDate && (() => {
