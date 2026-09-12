@@ -21,3 +21,4 @@ Firestore transaction başarılı olduktan sonra updateProfile başarısız olur
 
 2026-09-12: Genel proje taramasında kaydedildi. Bu ticket uygulama değişikliği içermez.
 2026-09-12: Auth hesabı yalnız kalıcı profil transaction'ı başarısızsa geri alınıyor. Profil adı ve doğrulama e-postası bağımsız, yeniden denenebilir tamamlama adımlarına ayrıldı; başarısızlıkları hesabı silmeden warnings olarak döndürülüyor. Her aşamaya hata enjeksiyon testi eklendi.
+2026-09-12: Code review sonrası warnings sonucu oturumda korunup Geziler ekranında görünür kurtarma uyarısına ve “Kayıt adımlarını yeniden dene” eylemine bağlandı.

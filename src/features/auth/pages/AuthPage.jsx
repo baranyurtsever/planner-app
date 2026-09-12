@@ -10,8 +10,15 @@ export function AuthPage({ mode }) {
   if (!loading && user) return <Navigate to="/app/trips" replace />
 
   async function submit(payload) {
-    if (mode === 'register') await register(payload)
-    else await login(payload)
+    if (mode === 'register') {
+      const result = await register(payload)
+      if (result.warnings.length) {
+        window.sessionStorage.setItem('registration-completion', JSON.stringify({
+          displayName: payload.displayName,
+          warnings: result.warnings,
+        }))
+      }
+    } else await login(payload)
     navigate('/app/trips')
   }
 

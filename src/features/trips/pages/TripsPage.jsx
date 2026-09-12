@@ -4,6 +4,15 @@ import { useAuth } from '../../auth/authState'
 import { EmptyState, ErrorMessage, LoadingScreen } from '../../../shared/components/Feedback'
 import { createTrip, subscribeToUserTrips } from '../data/tripRepository'
 import { TripCreateForm } from '../components/TripCreateForm'
+import { completeRegistration } from '../../auth/data/authRepository'
+
+function pendingRegistrationCompletion() {
+  try {
+    return JSON.parse(window.sessionStorage.getItem('registration-completion'))
+  } catch {
+    return null
+  }
+}
 
 export function TripsPage() {
   const { user } = useAuth()
@@ -11,6 +20,7 @@ export function TripsPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [showForm, setShowForm] = useState(false)
+  const [registrationCompletion, setRegistrationCompletion] = useState(pendingRegistrationCompletion)
 
   useEffect(
     () =>
@@ -38,6 +48,19 @@ export function TripsPage() {
     }
   }
 
+  async function retryRegistrationCompletion() {
+    setError('')
+    const warnings = await completeRegistration(user, registrationCompletion.displayName)
+    if (warnings.length) {
+      const next = { ...registrationCompletion, warnings }
+      window.sessionStorage.setItem('registration-completion', JSON.stringify(next))
+      setRegistrationCompletion(next)
+      return
+    }
+    window.sessionStorage.removeItem('registration-completion')
+    setRegistrationCompletion(null)
+  }
+
   if (loading) return <LoadingScreen label="Geziler yükleniyor…" />
 
   return (
@@ -58,6 +81,13 @@ export function TripsPage() {
       <div className="mt-5">
         <ErrorMessage message={error} />
       </div>
+
+      {registrationCompletion && (
+        <div className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+          <p className="font-bold">Hesabın oluşturuldu; profil veya doğrulama e-postası adımı tamamlanamadı.</p>
+          <button type="button" onClick={() => retryRegistrationCompletion().catch((nextError) => setError(nextError.message))} className="mt-2 font-bold underline">Kayıt adımlarını yeniden dene</button>
+        </div>
+      )}
 
       {showForm && <TripCreateForm onSubmit={submit} />}
 
