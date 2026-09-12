@@ -499,17 +499,35 @@ service cloud.firestore {
               resource.data.proposerId == request.auth.uid &&
               request.resource.data.proposerId == resource.data.proposerId &&
               request.resource.data.targetItemId == resource.data.targetItemId &&
-              request.resource.data.action == resource.data.action &&
-              resource.data.status == 'pending' &&
               (
                 (
+                  resource.data.status == 'pending' &&
                   request.resource.data.status == 'pending' &&
+                  request.resource.data.action in ['create', 'update', 'delete'] &&
+                  request.resource.data.patch is map &&
                   request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+                    'action',
                     'patch',
                     'updatedAt'
-                  ])
+                  ]) &&
+                  (
+                    (
+                      request.resource.data.action == 'create' &&
+                      isSharedPlanItem(request.resource.data.patch) &&
+                      validPlanItem(request.resource.data.patch)
+                    ) ||
+                    (
+                      request.resource.data.action in ['update', 'delete'] &&
+                      exists(/databases/$(database)/documents/trips/$(tripId)/planItems/$(request.resource.data.targetItemId)) &&
+                      isSharedPlanItem(
+                        get(/databases/$(database)/documents/trips/$(tripId)/planItems/$(request.resource.data.targetItemId)).data
+                      )
+                    )
+                  )
                 ) ||
                 (
+                  resource.data.status == 'pending' &&
+                  request.resource.data.action == resource.data.action &&
                   request.resource.data.status == 'withdrawn' &&
                   request.resource.data.withdrawnBy == request.auth.uid &&
                   request.resource.data.diff(resource.data).affectedKeys().hasOnly([
@@ -517,6 +535,32 @@ service cloud.firestore {
                     'withdrawnBy',
                     'decidedAt'
                   ])
+                ) ||
+                (
+                  resource.data.status != 'pending' &&
+                  request.resource.data.status == 'pending' &&
+                  request.resource.data.action in ['create', 'update', 'delete'] &&
+                  request.resource.data.patch is map &&
+                  request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+                    'action',
+                    'patch',
+                    'status',
+                    'updatedAt'
+                  ]) &&
+                  (
+                    (
+                      request.resource.data.action == 'create' &&
+                      isSharedPlanItem(request.resource.data.patch) &&
+                      validPlanItem(request.resource.data.patch)
+                    ) ||
+                    (
+                      request.resource.data.action in ['update', 'delete'] &&
+                      exists(/databases/$(database)/documents/trips/$(tripId)/planItems/$(request.resource.data.targetItemId)) &&
+                      isSharedPlanItem(
+                        get(/databases/$(database)/documents/trips/$(tripId)/planItems/$(request.resource.data.targetItemId)).data
+                      )
+                    )
+                  )
                 )
               )
             )

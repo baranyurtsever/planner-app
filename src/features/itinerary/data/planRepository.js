@@ -115,24 +115,19 @@ async function reconcilePublicPlanProjections(tripId, userId, items) {
   }
 }
 
-function proposalReference(tripId, proposerId, targetItemId, action) {
+function proposalReference(tripId, proposerId, targetItemId) {
   return doc(
     db,
     'trips',
     tripId,
     'planChangeProposals',
-    `${targetItemId}_${proposerId}_${action}`,
+    `${targetItemId}_${proposerId}`,
   )
 }
 
 async function saveProposal({ tripId, proposerId, targetItemId, action, patch }) {
-  const stableReference = proposalReference(tripId, proposerId, targetItemId, action)
+  const stableReference = proposalReference(tripId, proposerId, targetItemId)
   const existing = await getDoc(stableReference)
-  const reference = existing.exists() && existing.data().status === 'pending'
-    ? stableReference
-    : existing.exists()
-      ? doc(collection(db, 'trips', tripId, 'planChangeProposals'))
-      : stableReference
   const nextProposal = {
     proposerId,
     targetItemId,
@@ -141,11 +136,25 @@ async function saveProposal({ tripId, proposerId, targetItemId, action, patch })
     status: 'pending',
     updatedAt: serverTimestamp(),
   }
-  if (!existing.exists() || reference.id !== stableReference.id) {
+  if (!existing.exists()) {
     nextProposal.createdAt = serverTimestamp()
   }
-  await setDoc(reference, nextProposal, { merge: true })
-  return { kind: 'proposal', id: reference.id, targetItemId }
+  await setDoc(stableReference, nextProposal, { merge: true })
+  return { kind: 'proposal', id: stableReference.id, targetItemId }
+}
+
+function proposalTimestamp(proposal) {
+  return proposal.updatedAt?.toMillis?.() || proposal.createdAt?.toMillis?.() || 0
+}
+
+function activeProposals(proposals) {
+  const unique = new Map()
+  proposals.filter((proposal) => proposal.status === 'pending').forEach((proposal) => {
+    const key = `${proposal.targetItemId}:${proposal.proposerId}`
+    const current = unique.get(key)
+    if (!current || proposalTimestamp(proposal) >= proposalTimestamp(current)) unique.set(key, proposal)
+  })
+  return [...unique.values()]
 }
 
 export function subscribeToPlanItems(tripId, userId, callback, onError = console.error) {
@@ -189,7 +198,7 @@ export function subscribeToPlanItems(tripId, userId, callback, onError = console
 export function subscribeToPlanProposals(tripId, callback, onError = console.error) {
   return onSnapshot(
     collection(db, 'trips', tripId, 'planChangeProposals'),
-    (snapshot) => callback(decode(snapshot).filter((proposal) => proposal.status === 'pending')),
+    (snapshot) => callback(activeProposals(decode(snapshot))),
     onError,
   )
 }

@@ -91,7 +91,7 @@ export function PlanPage() {
 
       <div className="mt-5"><ErrorMessage message={error} /></div>
       {notice && <p className="mt-4 rounded-xl bg-teal-50 px-4 py-3 text-sm font-semibold text-teal-800">{notice}</p>}
-      <ProposalPanel trip={trip} user={user} proposals={proposals} />
+      <ProposalPanel trip={trip} user={user} proposals={proposals} items={items} />
 
       <div className="mt-6 space-y-3">
         {visibleItems.map((item) => {

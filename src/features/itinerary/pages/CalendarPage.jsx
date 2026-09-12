@@ -126,7 +126,7 @@ function CalendarCard({
     >
       {editable && <span data-resize-edge="start" className="absolute inset-x-0 top-0 h-2 cursor-ns-resize" />}
       <p className="truncate text-[10px] font-black">
-        {ghost ? 'ÖNERİ · ' : ''}{layout.columnCount > 1 ? '⚠ ' : ''}{category.icon} {timeLabel(item.startMinute)}–{timeLabel(item.endMinute)}
+        {ghost ? `ÖNERİ @${item.proposerId || '—'} · ` : ''}{layout.columnCount > 1 ? '⚠ ' : ''}{category.icon} {timeLabel(item.startMinute)}–{timeLabel(item.endMinute)}
       </p>
       <h3 className="truncate text-xs font-black">{item.title}</h3>
       {height >= 48 && item.location?.name && <p className="truncate text-[10px] opacity-70">{item.location.name}</p>}
@@ -190,9 +190,24 @@ export function CalendarPage() {
       ? { id: `proposal-${proposal.id}`, ...proposal.patch }
       : { ...original, ...proposal.patch, id: `proposal-${proposal.id}` }
     return candidate?.time?.kind === 'timed'
-      ? [{ ...calendarInterval(candidate), proposalId: proposal.id }]
+      ? [{ ...calendarInterval(candidate), proposalId: proposal.id, proposerId: proposal.proposerId }]
       : []
   }), [items, proposals])
+  const proposedAllDayByDate = useMemo(() => proposals.reduce((groups, proposal) => {
+    if (proposal.action === 'delete') return groups
+    const original = items.find((item) => item.id === proposal.targetItemId)
+    const candidate = proposal.action === 'create'
+      ? { id: `proposal-${proposal.id}`, ...proposal.patch }
+      : { ...original, ...proposal.patch, id: `proposal-${proposal.id}` }
+    if (candidate?.time?.kind !== 'date') return groups
+    const date = planItemDate(candidate)
+    groups[date] = [...(groups[date] || []), {
+      ...candidate,
+      proposalId: proposal.id,
+      proposerId: proposal.proposerId,
+    }]
+    return groups
+  }, {}), [items, proposals])
   const deletingIds = useMemo(
     () => new Set(proposals.filter((proposal) => proposal.action === 'delete').map((proposal) => proposal.targetItemId)),
     [proposals],
@@ -354,7 +369,7 @@ export function CalendarPage() {
       </div>
       <div className="mt-4"><ErrorMessage message={error} /></div>
       {notice && <p className="mt-3 rounded-xl bg-teal-50 px-4 py-3 text-sm font-semibold text-teal-800">{notice}</p>}
-      <ProposalPanel trip={trip} user={user} proposals={proposals} />
+      <ProposalPanel trip={trip} user={user} proposals={proposals} items={items} />
 
       <CalendarScrollFrame
         scrollRef={scrollRef}
@@ -387,6 +402,16 @@ export function CalendarPage() {
                     className="mb-1 w-full truncate rounded-md bg-slate-800 px-2 py-1 text-left text-xs font-bold text-white"
                   >
                     {PLAN_CATEGORY_MAP[item.category]?.icon} {item.title}
+                  </button>
+                ))}
+                {(proposedAllDayByDate[date] || []).map((item) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    disabled
+                    className="mb-1 w-full truncate rounded-md border border-dashed border-amber-400 bg-amber-100 px-2 py-1 text-left text-xs font-bold text-amber-950 opacity-70"
+                  >
+                    ÖNERİ @{item.proposerId} · {PLAN_CATEGORY_MAP[item.category]?.icon} {item.title}
                   </button>
                 ))}
               </div>

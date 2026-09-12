@@ -474,6 +474,30 @@ describe('plan change proposals', () => {
       { status: 'approved', decidedBy: 'owner' },
     ))
   })
+
+  it('lets an editor reuse their target proposal slot after a decision', async () => {
+    const editorDb = testEnvironment.authenticatedContext('editor').firestore()
+    const proposalRef = doc(editorDb, 'trips', 'public-trip', 'planChangeProposals', 'shared-plan_editor')
+
+    await testEnvironment.withSecurityRulesDisabled(async (context) => {
+      await setDoc(doc(context.firestore(), 'trips', 'public-trip', 'planChangeProposals', 'shared-plan_editor'), {
+        proposerId: 'editor',
+        targetItemId: 'shared-plan',
+        action: 'update',
+        patch: { title: 'İlk öneri' },
+        status: 'rejected',
+        decidedBy: 'owner',
+      })
+    })
+
+    await assertSucceeds(setDoc(proposalRef, {
+      proposerId: 'editor',
+      targetItemId: 'shared-plan',
+      action: 'delete',
+      patch: {},
+      status: 'pending',
+    }, { merge: true }))
+  })
 })
 
 describe('plan participation', () => {

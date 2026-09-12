@@ -3,7 +3,7 @@ import { MemoryRouter, Outlet, Route, Routes } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { CalendarPage } from './CalendarPage'
 
-const mocks = vi.hoisted(() => ({ changePlanItem: vi.fn() }))
+const mocks = vi.hoisted(() => ({ changePlanItem: vi.fn(), proposals: [] }))
 
 vi.mock('../data/planRepository', () => ({
   changePlanItem: mocks.changePlanItem,
@@ -29,7 +29,7 @@ vi.mock('../data/planRepository', () => ({
     return vi.fn()
   },
   subscribeToPlanProposals: (_tripId, callback) => {
-    callback([])
+    callback(mocks.proposals)
     return vi.fn()
   },
 }))
@@ -53,12 +53,38 @@ describe('CalendarPage pointer interactions', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mocks.changePlanItem.mockResolvedValue({ kind: 'item' })
+    mocks.proposals = []
     window.matchMedia = vi.fn().mockReturnValue({
       matches: false,
       addEventListener: vi.fn(),
       removeEventListener: vi.fn(),
     })
     HTMLElement.prototype.setPointerCapture = vi.fn()
+  })
+
+  it('shows an all-day proposal ghost with its proposer', () => {
+    mocks.proposals = [{
+      id: 'proposal',
+      targetItemId: 'new-plan',
+      proposerId: 'editor',
+      action: 'create',
+      patch: {
+        title: 'Ada turu',
+        category: 'activity',
+        time: { kind: 'date', localDate: '2026-09-12' },
+      },
+    }]
+    const { getByText } = render(
+      <MemoryRouter initialEntries={['/calendar?date=2026-09-12']}>
+        <Routes>
+          <Route element={<Outlet context={{ trip, user: { uid: 'owner' } }} />}>
+            <Route path="calendar" element={<CalendarPage />} />
+          </Route>
+        </Routes>
+      </MemoryRouter>,
+    )
+
+    expect(getByText(/ÖNERİ @editor.*Ada turu/)).toBeInTheDocument()
   })
 
   it('keeps the capture owner mounted, commits an outside drop, and suppresses its click', async () => {

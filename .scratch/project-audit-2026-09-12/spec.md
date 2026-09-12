@@ -31,7 +31,7 @@ P1: Gizlilik, veri bütünlüğü ve ana akışı engelleyen hatalar. P2: İşle
 - [x] **P1 / 07** — [Kişisel katılım kuralları yetki sınırlarını korumuyor](issues/07-todo.md)
 - [x] **P1 / 08** — [Eski form verisi güncel katılımı ve kart alanlarını eziyor](issues/08-todo.md)
 - [x] **P2 / 09** — [Yeni kişisel kartın ilk kaydı public delete kuralına takılabilir](issues/09-todo.md)
-- [ ] **P2 / 10** — [Öneri tekrarları ve önizleme eksikleri](issues/10-todo.md)
+- [x] **P2 / 10** — [Öneri tekrarları ve önizleme eksikleri](issues/10-todo.md)
 - [ ] **P2 / 11** — [Öneri patch ve karar kuralları yetersiz](issues/11-todo.md)
 - [ ] **P2 / 12** — [Zaman modeli sıfır süreyi ve geçersiz tarihleri kabul ediyor](issues/12-todo.md)
 - [ ] **P2 / 13** — [Takvim yerel gün ve çok günlük etkinlikleri yanlış gösteriyor](issues/13-todo.md)

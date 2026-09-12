@@ -1,6 +1,6 @@
 # 10 — Öneri tekrarları ve önizleme eksikleri
 
-Status: needs-triage
+Status: resolved
 Priority: P2
 Type: task
 Evidence: Kod incelemesi; özel senaryo henüz ayrı testle çalıştırılmadı.
@@ -17,9 +17,9 @@ Sabit öneri karara bağlandıktan sonra her yeni hareket rastgele yeni belge a�
 
 ## Yapılacaklar ve kabul kriteri
 
-- [ ] Aktif öneriyi target/proposer üzerinden tekilleştir; alan bazlı mevcut/önerilen değer karşılaştırması ekle; tüm-gün ve gruplanmış hayalet gösterimini tamamla.
+- [x] Aktif öneriyi target/proposer üzerinden tekilleştir; alan bazlı mevcut/önerilen değer karşılaştırması ekle; tüm-gün ve gruplanmış hayalet gösterimini tamamla.
 
 ## Comments
 
 2026-09-12: Genel proje taramasında kaydedildi. Bu ticket uygulama değişikliği içermez.
-
+2026-09-12: Öneriler target/proposer anahtarıyla tekilleştirildi; karara bağlanan yuva güvenli biçimde yeniden kullanılabilir yapıldı. Panel alan bazlı mevcut/önerilen karşılaştırması ve kart gruplaması kazandı; zamanlı ve tüm-gün önerilerinde öneren kullanıcıyla hayalet önizleme eklendi. React ve Firestore emulator testleriyle doğrulandı.
