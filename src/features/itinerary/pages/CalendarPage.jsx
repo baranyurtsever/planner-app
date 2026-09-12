@@ -126,6 +126,7 @@ export function CalendarPage() {
   const [notice, setNotice] = useState('')
   const [error, setError] = useState('')
   const [failedChange, setFailedChange] = useState(null)
+  const [optimisticTimes, setOptimisticTimes] = useState({})
   const [now, setNow] = useState(() => new Date())
   const scrollRef = useRef(null)
   const boardRef = useRef(null)
@@ -174,9 +175,22 @@ export function CalendarPage() {
     autoScrolledRangeRef.current = rangeKey
   }, [days, items])
 
+  useEffect(() => {
+    setOptimisticTimes((current) => Object.fromEntries(
+      Object.entries(current).filter(([itemId, time]) => {
+        const saved = items.find((item) => item.id === itemId)
+        return !saved || JSON.stringify(saved.time) !== JSON.stringify(time)
+      }),
+    ))
+  }, [items])
+
+  const displayedItems = useMemo(() => items.map((item) => (
+    optimisticTimes[item.id] ? { ...item, time: optimisticTimes[item.id] } : item
+  )), [items, optimisticTimes])
+
   const officialTimed = useMemo(
-    () => items.filter((item) => item.time?.kind === 'timed').flatMap(calendarIntervals),
-    [items],
+    () => displayedItems.filter((item) => item.time?.kind === 'timed').flatMap(calendarIntervals),
+    [displayedItems],
   )
   const proposedTimed = useMemo(() => proposals.flatMap((proposal) => {
     if (proposal.action === 'delete') return []
@@ -339,10 +353,17 @@ export function CalendarPage() {
   async function commitChange(current) {
     setError('')
     setFailedChange(null)
+    const direct = canDirectEditPlanItem(trip, current.item, user.uid)
+    if (direct) setOptimisticTimes((times) => ({ ...times, [current.item.id]: current.preview }))
     try {
       const result = await changePlanItem(trip, current.item, user.uid, { time: current.preview })
       setNotice(result.kind === 'proposal' ? 'Takvim değişikliği öneri olarak gönderildi.' : 'Takvim güncellendi.')
     } catch (nextError) {
+      if (direct) setOptimisticTimes((times) => {
+        const next = { ...times }
+        delete next[current.item.id]
+        return next
+      })
       setError(nextError.message)
       setFailedChange(current)
     }

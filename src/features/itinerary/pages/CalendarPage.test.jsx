@@ -210,4 +210,29 @@ describe('CalendarPage pointer interactions', () => {
       expect.objectContaining({ time: expect.objectContaining({ endsAt: '2026-09-12T11:00:00.000Z' }) }),
     ))
   })
+
+  it('shows a direct move optimistically and rolls it back on failure', async () => {
+    let rejectWrite
+    mocks.changePlanItem.mockReturnValue(new Promise((_resolve, reject) => { rejectWrite = reject }))
+    const { container } = render(
+      <MemoryRouter initialEntries={['/calendar?date=2026-09-12']}>
+        <Routes>
+          <Route element={<Outlet context={{ trip, user: { uid: 'owner' } }} />}>
+            <Route path="calendar" element={<CalendarPage />} />
+          </Route>
+        </Routes>
+      </MemoryRouter>,
+    )
+    const board = container.querySelector('[data-testid="calendar-time-board"]')
+    board.getBoundingClientRect = () => ({ top: 0, left: 0, width: 764, height: 1536 })
+    const originalTitle = 'Akşam yemeği · 12:00–13:00'
+    const card = container.querySelector(`article[title="${originalTitle}"]`)
+    fireEvent.pointerDown(card, { pointerId: 12, button: 0, clientX: 700, clientY: 770 })
+    fireEvent.pointerMove(board, { pointerId: 12, clientX: 590, clientY: 850 })
+    fireEvent.pointerUp(board, { pointerId: 12, clientX: 590, clientY: 850 })
+
+    await waitFor(() => expect(container.querySelector(`article[title="${originalTitle}"]`)).not.toBeInTheDocument())
+    rejectWrite(new Error('Bağlantı kesildi'))
+    await waitFor(() => expect(container.querySelector(`article[title="${originalTitle}"]`)).toBeInTheDocument())
+  })
 })
