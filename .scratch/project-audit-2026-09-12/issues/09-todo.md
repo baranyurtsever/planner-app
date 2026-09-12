@@ -1,6 +1,6 @@
 # 09 — Yeni kişisel kartın ilk kaydı public delete kuralına takılabilir
 
-Status: needs-triage
+Status: resolved
 Priority: P2
 Type: task
 Evidence: Kod incelemesi; özel senaryo henüz ayrı testle çalıştırılmadı.
@@ -17,9 +17,13 @@ syncPublicPlan profile olmayan her kayıtta public belgeyi siler. Yeni kişisel 
 
 ## Yapılacaklar ve kabul kriteri
 
-- [ ] Editor/viewer yeni trip/private kişisel kart oluşturmasını gerçek repository batch ile emülatörde doğrula; gereksiz delete yerine mevcut/prospektif sahiplikle uyumlu senkronizasyon kur.
+- [x] Editor/viewer yeni trip/private kişisel kart oluşturmasını gerçek repository batch ile emülatörde doğrula; gereksiz delete yerine mevcut/prospektif sahiplikle uyumlu senkronizasyon kur.
+
+## Answer
+
+Yeni profil-dışı kart kayıtları artık var olmayan public projection için gereksiz `delete` yazmıyor. Firestore kuralı da eski istemcilerin aynı batch içinde kaynak oluşturup public belgeyi silme davranışını, işlem sonrası kaynak sahibini doğrulayarak güvenli biçimde kabul ediyor. Viewer tarafından private kişisel kart oluşturulan legacy batch emülatörde doğrulandı.
 
 ## Comments
 
 2026-09-12: Genel proje taramasında kaydedildi. Bu ticket uygulama değişikliği içermez.
-
+2026-09-12: Gereksiz projection delete kaldırıldı ve prospective sahiplik kuralı eklendi; 27 kural, 42 uygulama testi, lint ve build geçti.

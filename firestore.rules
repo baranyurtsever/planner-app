@@ -445,6 +445,15 @@ service cloud.firestore {
               exists(/databases/$(database)/documents/trips/$(tripId)/planItems/$(planItemId)) &&
               isPersonalPlanItem(planItem(tripId, planItemId)) &&
               planItem(tripId, planItemId).ownerId == request.auth.uid
+            ) ||
+            (
+              existsAfter(/databases/$(database)/documents/trips/$(tripId)/planItems/$(planItemId)) &&
+              isPersonalPlanItem(getAfter(
+                /databases/$(database)/documents/trips/$(tripId)/planItems/$(planItemId)
+              ).data) &&
+              getAfter(
+                /databases/$(database)/documents/trips/$(tripId)/planItems/$(planItemId)
+              ).data.ownerId == request.auth.uid
             )
           );
       }

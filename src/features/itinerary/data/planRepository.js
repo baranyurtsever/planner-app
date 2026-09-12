@@ -242,7 +242,9 @@ export async function savePlanItem(trip, planItem, userId) {
   }
   const batch = writeBatch(db)
   batch.set(reference, savedItem, { merge: true })
-  syncPublicPlan(batch, trip.id, reference.id, cleaned)
+  if (cleaned.visibility === 'profile') {
+    syncPublicPlan(batch, trip.id, reference.id, cleaned)
+  }
   await batch.commit()
   return { kind: 'item', id: reference.id }
 }

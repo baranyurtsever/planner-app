@@ -360,6 +360,21 @@ describe('plan item integrity', () => {
     ))
   })
 
+  it('allows a participant to create a non-public personal plan in a legacy sync batch', async () => {
+    const db = testEnvironment.authenticatedContext('viewer').firestore()
+    const sourceRef = doc(db, 'trips', 'public-trip', 'planItems', 'viewer-private-plan')
+    const publicRef = doc(db, 'trips', 'public-trip', 'publicPlanItems', 'viewer-private-plan')
+    const batch = writeBatch(db)
+    batch.set(sourceRef, personalPlan({
+      ownerId: 'viewer',
+      participantIds: ['viewer'],
+      visibility: 'private',
+      createdBy: 'viewer',
+    }))
+    batch.delete(publicRef)
+    await assertSucceeds(batch.commit())
+  })
+
   it('keeps private personal plans visible only to their owner', async () => {
     const editorDb = testEnvironment.authenticatedContext('editor').firestore()
     const ownerDb = testEnvironment.authenticatedContext('owner').firestore()
