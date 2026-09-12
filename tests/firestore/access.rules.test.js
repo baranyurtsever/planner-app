@@ -182,6 +182,19 @@ describe('public reads', () => {
     await assertFails(getDoc(doc(db, 'trips', 'public-trip', 'planItems', 'profile-plan')))
     await assertSucceeds(getDoc(doc(db, 'trips', 'public-trip', 'publicPlanItems', 'profile-plan')))
   })
+
+  it('does not expose a stale projection after its source is hidden', async () => {
+    await testEnvironment.withSecurityRulesDisabled(async (context) => {
+      await updateDoc(
+        doc(context.firestore(), 'trips', 'public-trip', 'planItems', 'profile-plan'),
+        { visibility: 'trip' },
+      )
+    })
+    const db = testEnvironment.unauthenticatedContext().firestore()
+    await assertFails(getDoc(
+      doc(db, 'trips', 'public-trip', 'publicPlanItems', 'profile-plan'),
+    ))
+  })
 })
 
 describe('profile integrity', () => {
@@ -377,7 +390,38 @@ describe('plan item integrity', () => {
     batch.set(publicRef, projection)
     await assertSucceeds(batch.commit())
 
+    await assertFails(setDoc(
+      doc(ownerDb, 'trips', 'public-trip', 'planItems', 'missing-projection'),
+      { ...source, title: 'Eksik kopya' },
+    ))
+
     await assertFails(updateDoc(publicRef, { title: 'Kaynakla uyuşmayan başlık' }))
+  })
+
+  it('requires the public projection to be deleted when a source plan becomes private', async () => {
+    const db = testEnvironment.authenticatedContext('owner').firestore()
+    const sourceRef = doc(db, 'trips', 'public-trip', 'planItems', 'profile-plan')
+    const publicRef = doc(db, 'trips', 'public-trip', 'publicPlanItems', 'profile-plan')
+
+    await assertFails(updateDoc(sourceRef, { visibility: 'trip' }))
+
+    const batch = writeBatch(db)
+    batch.update(sourceRef, { visibility: 'trip' })
+    batch.delete(publicRef)
+    await assertSucceeds(batch.commit())
+  })
+
+  it('requires the public projection to be deleted with its source plan', async () => {
+    const db = testEnvironment.authenticatedContext('owner').firestore()
+    const sourceRef = doc(db, 'trips', 'public-trip', 'planItems', 'profile-plan')
+    const publicRef = doc(db, 'trips', 'public-trip', 'publicPlanItems', 'profile-plan')
+
+    await assertFails(deleteDoc(sourceRef))
+
+    const batch = writeBatch(db)
+    batch.delete(sourceRef)
+    batch.delete(publicRef)
+    await assertSucceeds(batch.commit())
   })
 })
 

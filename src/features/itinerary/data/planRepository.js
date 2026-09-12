@@ -2,6 +2,7 @@ import {
   collection,
   doc,
   getDoc,
+  getDocs,
   onSnapshot,
   query,
   runTransaction,
@@ -23,6 +24,7 @@ import {
 } from '../domain/planItem'
 
 const decode = (snapshot) => snapshot.docs.map((item) => ({ id: item.id, ...item.data() }))
+const reconciledPublicPlans = new Set()
 
 function cleanPlanItem(planItem, userId) {
   return normalizePlanItemForWrite(planItem, userId)
@@ -51,6 +53,54 @@ function syncPublicPlan(batch, tripId, itemId, planItem) {
     batch.set(publicReference, publicPlanPayload(planItem), { merge: true })
   } else {
     batch.delete(publicReference)
+  }
+}
+
+async function reconcilePublicPlanProjections(tripId, userId, items) {
+  const reconciliationKey = `${tripId}:${userId}`
+  if (reconciledPublicPlans.has(reconciliationKey)) return
+  reconciledPublicPlans.add(reconciliationKey)
+
+  try {
+    const [tripSnapshot, publicSnapshot] = await Promise.all([
+      getDoc(doc(db, 'trips', tripId)),
+      getDocs(collection(db, 'trips', tripId, 'publicPlanItems')),
+    ])
+    if (!tripSnapshot.exists()) return
+
+    const trip = tripSnapshot.data()
+    const isOwner = trip.ownerId === userId
+    const sourceById = new Map(items.map((item) => [item.id, item]))
+    const batch = writeBatch(db)
+    let writes = 0
+
+    for (const item of items) {
+      const canPublish = item.scope === PLAN_SCOPE.PERSONAL
+        ? item.ownerId === userId
+        : isOwner
+      if (item.visibility === 'profile' && canPublish) {
+        batch.set(
+          doc(db, 'trips', tripId, 'publicPlanItems', item.id),
+          publicPlanPayload(item),
+        )
+        writes += 1
+      }
+    }
+
+    if (isOwner) {
+      for (const publicDocument of publicSnapshot.docs) {
+        const source = sourceById.get(publicDocument.id)
+        if (!source || source.visibility !== 'profile') {
+          batch.delete(publicDocument.ref)
+          writes += 1
+        }
+      }
+    }
+
+    if (writes > 0) await batch.commit()
+  } catch (error) {
+    reconciledPublicPlans.delete(reconciliationKey)
+    console.error('Public Plan Öğesi projeksiyonları onarılamadı.', error)
   }
 }
 
@@ -112,6 +162,7 @@ export function subscribeToPlanItems(tripId, userId, callback, onError = console
   }
   const unsubscribeVisible = onSnapshot(visibleQuery, (snapshot) => {
     snapshots.visible = decode(snapshot)
+    void reconcilePublicPlanProjections(tripId, userId, snapshots.visible)
     publish()
   }, onError)
   const unsubscribePrivate = onSnapshot(privateOwnerQuery, (snapshot) => {

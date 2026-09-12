@@ -23,7 +23,7 @@ Yeşil testler aşağıdaki açıkların bulunmadığı anlamına gelmiyor. Öze
 P1: Gizlilik, veri bütünlüğü ve ana akışı engelleyen hatalar. P2: İşlevsel eksikler ve sağlamlaştırma. Öncelik kodun olası etkisine göre verilmiştir; ayrı yeniden üretim doğrulaması ticket uygulamasının ilk adımıdır.
 
 - [x] **P1 / 01** — [Public Gezi belgesi katılımcı kimliklerini açığa çıkarıyor](issues/01-todo.md)
-- [ ] **P1 / 02** — [Public Plan Öğesi kopyası gizleme/silme sonrası açık kalabiliyor](issues/02-todo.md)
+- [x] **P1 / 02** — [Public Plan Öğesi kopyası gizleme/silme sonrası açık kalabiliyor](issues/02-todo.md)
 - [ ] **P1 / 03** — [Kişisel bilgi formları ana Plan Öğesi formunu tetikliyor](issues/03-todo.md)
 - [ ] **P1 / 04** — [Sürükleme başlarken pointer capture sahibi kart kaldırılıyor](issues/04-todo.md)
 - [ ] **P1 / 05** — [Notu olmayan kullanıcı Plan Öğesinden ayrılamıyor](issues/05-todo.md)

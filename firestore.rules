@@ -65,6 +65,23 @@ service cloud.firestore {
       ).data;
     }
 
+    function publicPlanIsSyncedAfter(tripId, planItemId, planData) {
+      let publicPath = /databases/$(database)/documents/trips/$(tripId)/publicPlanItems/$(planItemId);
+      return (
+          planData.visibility == 'profile' &&
+          existsAfter(publicPath) &&
+          getAfter(publicPath).data.scope == planData.scope &&
+          getAfter(publicPath).data.title == planData.title &&
+          getAfter(publicPath).data.category == planData.category &&
+          getAfter(publicPath).data.status == planData.status &&
+          getAfter(publicPath).data.visibility == planData.visibility &&
+          getAfter(publicPath).data.notes == planData.notes &&
+          getAfter(publicPath).data.location == planData.location &&
+          getAfter(publicPath).data.time == planData.time
+        ) ||
+        (planData.visibility != 'profile' && !existsAfter(publicPath));
+    }
+
     function validUsername(username) {
       return username is string &&
         username.size() >= 3 &&
@@ -236,6 +253,7 @@ service cloud.firestore {
         allow create: if isActiveTrip(tripId) &&
           isParticipant(trip(tripId)) &&
           validPlanItem(request.resource.data) &&
+          publicPlanIsSyncedAfter(tripId, planItemId, request.resource.data) &&
           (
             (isSharedPlanItem(request.resource.data) && isOwner(trip(tripId))) ||
             (
@@ -245,6 +263,7 @@ service cloud.firestore {
           );
         allow update: if isActiveTrip(tripId) &&
           validPlanItem(request.resource.data) &&
+          publicPlanIsSyncedAfter(tripId, planItemId, request.resource.data) &&
           (
             (
               isSharedPlanItem(resource.data) &&
@@ -301,6 +320,7 @@ service cloud.firestore {
             )
           );
         allow delete: if isActiveTrip(tripId) &&
+          !existsAfter(/databases/$(database)/documents/trips/$(tripId)/publicPlanItems/$(planItemId)) &&
           (
             (isSharedPlanItem(resource.data) && isOwner(trip(tripId))) ||
             (isPersonalPlanItem(resource.data) && resource.data.ownerId == request.auth.uid)
@@ -308,7 +328,12 @@ service cloud.firestore {
       }
 
       match /publicPlanItems/{planItemId} {
-        allow read: if isParticipant(trip(tripId)) || isPublicTrip(trip(tripId));
+        allow read: if isParticipant(trip(tripId)) ||
+          (
+            isPublicTrip(trip(tripId)) &&
+            exists(/databases/$(database)/documents/trips/$(tripId)/planItems/$(planItemId)) &&
+            planItem(tripId, planItemId).visibility == 'profile'
+          );
         allow create, update: if isActiveTrip(tripId) &&
           request.resource.data.keys().hasOnly([
             'scope',
