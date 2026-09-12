@@ -141,3 +141,21 @@ export function formatPlanTime(planTime, locale = 'tr-TR') {
     end: format(planTime.endsAt, planTime.endTimeZone),
   }
 }
+
+export function formatCalendarTimeLabel(planTime, locale = 'tr-TR') {
+  if (planTime.kind !== 'timed') return ''
+  const showZones = planTime.startTimeZone !== planTime.endTimeZone
+  const formatEdge = (instant, timeZone) => {
+    const parts = Object.fromEntries(
+      new Intl.DateTimeFormat(locale, {
+        timeZone,
+        hour: '2-digit',
+        minute: '2-digit',
+        hourCycle: 'h23',
+        ...(showZones ? { timeZoneName: 'short' } : {}),
+      }).formatToParts(new Date(instant)).filter((part) => part.type !== 'literal').map((part) => [part.type, part.value]),
+    )
+    return `${parts.hour}:${parts.minute}${parts.timeZoneName ? ` ${parts.timeZoneName}` : ''}`
+  }
+  return `${formatEdge(planTime.startsAt, planTime.startTimeZone)}–${formatEdge(planTime.endsAt, planTime.endTimeZone)}`
+}

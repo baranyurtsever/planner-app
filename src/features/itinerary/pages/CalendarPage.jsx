@@ -30,6 +30,7 @@ import {
   snapCalendarMinute,
 } from '../domain/calendarLayout'
 import { PLAN_CATEGORY_MAP } from '../domain/planItem'
+import { formatCalendarTimeLabel } from '../domain/planTime'
 
 const DAY_HEIGHT = CALENDAR_ROW_HEIGHT * 24
 
@@ -74,12 +75,15 @@ function CalendarCard({
 }) {
   const category = PLAN_CATEGORY_MAP[item.category] || PLAN_CATEGORY_MAP.other
   const height = Math.max(18, ((item.endMinute - item.startMinute) / 60) * CALENDAR_ROW_HEIGHT)
+  const displayTime = item.time?.kind === 'timed'
+    ? formatCalendarTimeLabel(item.time)
+    : `${timeLabel(item.startMinute)}–${timeLabel(item.endMinute)}`
   return (
     <article
       role="button"
       aria-hidden={hidden || undefined}
       tabIndex={0}
-      title={`${item.title} · ${timeLabel(item.startMinute)}–${timeLabel(item.endMinute)}`}
+      title={`${item.title} · ${displayTime}`}
       onClick={(event) => {
         event.stopPropagation()
         if (!ghost) onOpen(item)
@@ -108,7 +112,7 @@ function CalendarCard({
     >
       {editable && <span data-resize-edge="start" className="absolute inset-x-0 top-0 h-2 cursor-ns-resize" />}
       <p className="truncate text-[10px] font-black">
-        {ghost ? `ÖNERİ @${item.proposerId || '—'} · ` : ''}{layout.columnCount > 1 ? '⚠ ' : ''}{category.icon} {timeLabel(item.startMinute)}–{timeLabel(item.endMinute)}
+        {ghost ? `ÖNERİ @${item.proposerId || '—'} · ` : ''}{layout.columnCount > 1 ? '⚠ ' : ''}{category.icon} {displayTime}
       </p>
       <h3 className="truncate text-xs font-black">{item.title}</h3>
       {ghost && item.proposalOptions?.length > 1 && (

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   createDateOnlyPlanTime,
   createTimedPlanTime,
+  formatCalendarTimeLabel,
   formatPlanTime,
   utcToZonedLocal,
   zonedLocalToUtc,
@@ -71,6 +72,16 @@ describe('plan time', () => {
     })
 
     expect(formatPlanTime(planTime, 'tr-TR').start).toContain('10:00')
+  })
+
+  it('labels each edge in its own timezone when a Plan Item crosses zones', () => {
+    expect(formatCalendarTimeLabel({
+      kind: 'timed',
+      startsAt: '2026-07-23T20:00:00.000Z',
+      endsAt: '2026-07-24T01:00:00.000Z',
+      startTimeZone: 'Europe/Istanbul',
+      endTimeZone: 'Asia/Bangkok',
+    }, 'en-US')).toBe('23:00 GMT+3–08:00 GMT+7')
   })
 
   it('converts a destination-local wall clock value to a UTC instant', () => {
