@@ -9,7 +9,6 @@ import {
   query,
   serverTimestamp,
   setDoc,
-  updateDoc,
   where,
   writeBatch,
 } from 'firebase/firestore'
@@ -84,13 +83,18 @@ export async function decideParticipationRequest(tripId, item, request, decision
   await batch.commit()
 }
 
-export function includePlanParticipant(tripId, itemId, userId) {
-  return updateDoc(doc(db, 'trips', tripId, 'planItems', itemId), {
+export async function includePlanParticipant(tripId, itemId, userId) {
+  const departureRef = doc(db, 'trips', tripId, 'planDepartures', `${itemId}_${userId}`)
+  const departure = await getDoc(departureRef)
+  const batch = writeBatch(db)
+  batch.update(doc(db, 'trips', tripId, 'planItems', itemId), {
     participantIds: arrayUnion(userId),
     excludedParticipantIds: arrayRemove(userId),
     blockedParticipantIds: arrayRemove(userId),
     updatedAt: serverTimestamp(),
   })
+  if (departure.exists()) batch.delete(departureRef)
+  await batch.commit()
 }
 
 export async function leavePlanItem(tripId, item, userId) {

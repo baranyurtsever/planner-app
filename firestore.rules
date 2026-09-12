@@ -172,6 +172,22 @@ service cloud.firestore {
         );
     }
 
+    function validPersonalMembership(tripData, planData) {
+      return !isPersonalPlanItem(planData) ||
+        (
+          planData.participantIds.hasOnly(tripData.memberIds) &&
+          planData.blockedParticipantIds.hasOnly(tripData.memberIds) &&
+          !planData.participantIds.hasAny(planData.blockedParticipantIds) &&
+          (
+            planData.visibility != 'private' ||
+            (
+              planData.participantIds.size() == 1 &&
+              planData.participantIds.hasAny([planData.ownerId])
+            )
+          )
+        );
+    }
+
     function validTripMembership(tripData) {
       return tripData.memberIds is list &&
         tripData.memberRoles is map &&
@@ -265,6 +281,7 @@ service cloud.firestore {
         allow create: if isActiveTrip(tripId) &&
           isParticipant(trip(tripId)) &&
           validPlanItem(request.resource.data) &&
+          validPersonalMembership(trip(tripId), request.resource.data) &&
           publicPlanIsSyncedAfter(tripId, planItemId, request.resource.data) &&
           (
             (isSharedPlanItem(request.resource.data) && isOwner(trip(tripId))) ||
@@ -284,10 +301,15 @@ service cloud.firestore {
             ) ||
             (
               validPlanItem(request.resource.data) &&
+              validPersonalMembership(trip(tripId), request.resource.data) &&
               isPersonalPlanItem(resource.data) &&
               isPersonalPlanItem(request.resource.data) &&
               resource.data.ownerId == request.auth.uid &&
-              request.resource.data.ownerId == resource.data.ownerId
+              request.resource.data.ownerId == resource.data.ownerId &&
+              (
+                !('blockedParticipantIds' in resource.data) ||
+                !request.resource.data.participantIds.hasAny(resource.data.blockedParticipantIds)
+              )
             ) ||
             (
               isSharedPlanItem(resource.data) &&
@@ -335,6 +357,7 @@ service cloud.firestore {
             ) ||
             (
               validPlanItem(request.resource.data) &&
+              validPersonalMembership(trip(tripId), request.resource.data) &&
               isPersonalPlanItem(resource.data) &&
               isOwner(trip(tripId)) &&
               request.resource.data.ownerId == resource.data.ownerId &&
@@ -553,7 +576,8 @@ service cloud.firestore {
           request.resource.data.planItemId is string &&
           departureId == request.resource.data.planItemId + '_' + request.auth.uid &&
           !exists(departurePath(tripId, request.resource.data.planItemId, request.auth.uid));
-        allow update, delete: if false;
+        allow update: if false;
+        allow delete: if isOwner(trip(tripId));
       }
     }
 

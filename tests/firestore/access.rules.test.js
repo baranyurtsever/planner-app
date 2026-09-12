@@ -572,6 +572,46 @@ describe('plan participation', () => {
       title: 'Geç yazım', amount: 50, visibility: 'private',
     }))
   })
+
+  it('allows a personal card owner to add only active trip participants', async () => {
+    const db = testEnvironment.authenticatedContext('editor').firestore()
+    const ref = doc(db, 'trips', 'public-trip', 'planItems', 'personal-plan')
+    await assertSucceeds(updateDoc(ref, { participantIds: ['editor', 'viewer'] }))
+    await assertFails(updateDoc(ref, { participantIds: ['editor', 'outsider'] }))
+  })
+
+  it('keeps private personal cards exclusive to their owner', async () => {
+    const db = testEnvironment.authenticatedContext('editor').firestore()
+    await assertFails(updateDoc(
+      doc(db, 'trips', 'public-trip', 'planItems', 'private-personal-plan'),
+      { participantIds: ['editor', 'viewer'] },
+    ))
+  })
+
+  it('allows only the trip owner to restore a departed participant', async () => {
+    await testEnvironment.withSecurityRulesDisabled(async (context) => {
+      const db = context.firestore()
+      await updateDoc(doc(db, 'trips', 'public-trip', 'planItems', 'personal-plan'), {
+        participantIds: ['editor'], blockedParticipantIds: ['viewer'],
+      })
+      await setDoc(doc(db, 'trips', 'public-trip', 'planDepartures', 'personal-plan_viewer'), {
+        planItemId: 'personal-plan', userId: 'viewer',
+      })
+    })
+    const editorDb = testEnvironment.authenticatedContext('editor').firestore()
+    const ownerDb = testEnvironment.authenticatedContext('owner').firestore()
+    await assertFails(updateDoc(
+      doc(editorDb, 'trips', 'public-trip', 'planItems', 'personal-plan'),
+      { participantIds: ['editor', 'viewer'], blockedParticipantIds: [] },
+    ))
+
+    const batch = writeBatch(ownerDb)
+    batch.update(doc(ownerDb, 'trips', 'public-trip', 'planItems', 'personal-plan'), {
+      participantIds: ['editor', 'viewer'], blockedParticipantIds: [],
+    })
+    batch.delete(doc(ownerDb, 'trips', 'public-trip', 'planDepartures', 'personal-plan_viewer'))
+    await assertSucceeds(batch.commit())
+  })
 })
 
 describe('friendship integrity', () => {
