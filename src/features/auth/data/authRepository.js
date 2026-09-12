@@ -39,14 +39,24 @@ export async function register({ email, password, displayName, username }) {
       })
     })
 
-    await updateProfile(credential.user, { displayName: displayName.trim() })
   } catch (error) {
     await deleteUser(credential.user)
     throw error
   }
 
-  await sendEmailVerification(credential.user)
-  return credential.user
+  const warnings = await completeRegistration(credential.user, displayName)
+  return { user: credential.user, warnings }
+}
+
+export async function completeRegistration(user, displayName) {
+  const steps = await Promise.allSettled([
+    updateProfile(user, { displayName: displayName.trim() }),
+    sendEmailVerification(user),
+  ])
+  return [
+    ...(steps[0].status === 'rejected' ? ['profile'] : []),
+    ...(steps[1].status === 'rejected' ? ['verification-email'] : []),
+  ]
 }
 
 export async function login({ email, password }) {

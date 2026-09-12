@@ -1,6 +1,6 @@
 # 14 — Kayıt formu sonrası hata yetim profil bırakabiliyor
 
-Status: needs-triage
+Status: resolved
 Priority: P2
 Type: task
 Evidence: Kod incelemesi; özel senaryo henüz ayrı testle çalıştırılmadı.
@@ -15,9 +15,9 @@ Firestore transaction başarılı olduktan sonra updateProfile başarısız olur
 
 ## Yapılacaklar ve kabul kriteri
 
-- [ ] Kayıt aşamalarını tekrar denenebilir hale getir; profil güncelleme ve mail hatalarını hesap oluşturma sonucundan ayır. Her aşama için hata enjeksiyon testi ekle.
+- [x] Kayıt aşamalarını tekrar denenebilir hale getir; profil güncelleme ve mail hatalarını hesap oluşturma sonucundan ayır. Her aşama için hata enjeksiyon testi ekle.
 
 ## Comments
 
 2026-09-12: Genel proje taramasında kaydedildi. Bu ticket uygulama değişikliği içermez.
-
+2026-09-12: Auth hesabı yalnız kalıcı profil transaction'ı başarısızsa geri alınıyor. Profil adı ve doğrulama e-postası bağımsız, yeniden denenebilir tamamlama adımlarına ayrıldı; başarısızlıkları hesabı silmeden warnings olarak döndürülüyor. Her aşamaya hata enjeksiyon testi eklendi.

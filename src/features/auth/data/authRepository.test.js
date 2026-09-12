@@ -29,6 +29,9 @@ describe('authRepository registration', () => {
     vi.clearAllMocks()
     const user = { uid: 'user-1', email: 'ada@example.com' }
     authMocks.createUserWithEmailAndPassword.mockResolvedValue({ user })
+    authMocks.deleteUser.mockResolvedValue()
+    authMocks.updateProfile.mockResolvedValue()
+    authMocks.sendEmailVerification.mockResolvedValue()
     firestoreMocks.runTransaction.mockImplementation(async (_db, callback) => {
       await callback({
         get: vi.fn().mockResolvedValue({ exists: () => false }),
@@ -38,13 +41,45 @@ describe('authRepository registration', () => {
   })
 
   it('sends an address verification email after registration succeeds', async () => {
-    const user = await register({
+    const result = await register({
       email: 'ada@example.com',
       password: 'secret123',
       displayName: 'Ada',
       username: 'ada',
     })
 
-    expect(authMocks.sendEmailVerification).toHaveBeenCalledWith(user)
+    expect(authMocks.sendEmailVerification).toHaveBeenCalledWith(result.user)
+    expect(result.warnings).toEqual([])
+  })
+
+  it('deletes the auth user only when the durable profile transaction fails', async () => {
+    const failure = new Error('profile write failed')
+    firestoreMocks.runTransaction.mockRejectedValue(failure)
+
+    await expect(register({
+      email: 'ada@example.com',
+      password: 'secret123',
+      displayName: 'Ada',
+      username: 'ada',
+    })).rejects.toThrow('profile write failed')
+    expect(authMocks.deleteUser).toHaveBeenCalledOnce()
+  })
+
+  it.each([
+    ['profile', authMocks.updateProfile],
+    ['verification-email', authMocks.sendEmailVerification],
+  ])('keeps the registered account when the %s step fails', async (stage, failingStep) => {
+    failingStep.mockRejectedValue(new Error(`${stage} failed`))
+
+    const result = await register({
+      email: 'ada@example.com',
+      password: 'secret123',
+      displayName: 'Ada',
+      username: 'ada',
+    })
+
+    expect(result.user.uid).toBe('user-1')
+    expect(result.warnings).toContain(stage)
+    expect(authMocks.deleteUser).not.toHaveBeenCalled()
   })
 })
