@@ -1,6 +1,6 @@
 # 15 — Katılım isteği tekrar gönderme ve modal güncelliği eksik
 
-Status: needs-triage
+Status: resolved
 Priority: P2
 Type: task
 Evidence: Kod incelemesi; özel senaryo henüz ayrı testle çalıştırılmadı.
@@ -17,9 +17,9 @@ Evidence: Kod incelemesi; özel senaryo henüz ayrı testle çalıştırılmadı
 
 ## Yapılacaklar ve kabul kriteri
 
-- [ ] Bekleyen isteği göster ve tekrar göndermeyi engelle; reddedilmiş istek için yeniden başvuru politikası belirle; modalı güncel kayıtla besle.
+- [x] Bekleyen isteği göster ve tekrar göndermeyi engelle; reddedilmiş istek için yeniden başvuru politikası belirle; modalı güncel kayıtla besle.
 
 ## Comments
 
 2026-09-12: Genel proje taramasında kaydedildi. Bu ticket uygulama değişikliği içermez.
-
+2026-09-12: Bekleyen deterministik istekler yeniden yazılmadan beklemede sonucu döndürüyor ve arayüzde gösteriliyor. Reddedilen istek yalnız talep sahibi tarafından aynı belge üzerinden yeniden açılabiliyor. Plan ve takvim modalları canlı item kaydını kullanıyor; repository ve emulator testleri eklendi.

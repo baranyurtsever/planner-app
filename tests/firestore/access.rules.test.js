@@ -590,6 +590,24 @@ describe('plan participation', () => {
     ))
   })
 
+  it('lets only the requester reopen a rejected participation request', async () => {
+    await testEnvironment.withSecurityRulesDisabled(async (context) => {
+      await setDoc(doc(context.firestore(), 'trips', 'public-trip', 'planParticipationRequests', 'personal-plan_viewer'), {
+        planItemId: 'personal-plan',
+        requesterId: 'viewer',
+        itemOwnerId: 'editor',
+        status: 'rejected',
+        decidedBy: 'editor',
+      })
+    })
+    const viewerDb = testEnvironment.authenticatedContext('viewer').firestore()
+    const editorDb = testEnvironment.authenticatedContext('editor').firestore()
+    const requestPath = ['trips', 'public-trip', 'planParticipationRequests', 'personal-plan_viewer']
+
+    await assertFails(updateDoc(doc(editorDb, ...requestPath), { status: 'pending' }))
+    await assertSucceeds(updateDoc(doc(viewerDb, ...requestPath), { status: 'pending' }))
+  })
+
   it('lets a participant leave while preventing unrelated participant-array edits', async () => {
     await testEnvironment.withSecurityRulesDisabled(async (context) => {
       await updateDoc(

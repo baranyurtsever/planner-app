@@ -9,6 +9,7 @@ import {
   query,
   serverTimestamp,
   setDoc,
+  updateDoc,
   where,
   writeBatch,
 } from 'firebase/firestore'
@@ -51,12 +52,19 @@ export function saveOwnPlanDetails(tripId, planItemId, userId, details) {
   }, { merge: true })
 }
 
-export function requestPlanParticipation(tripId, item, userId) {
+export async function requestPlanParticipation(tripId, item, userId) {
   if (item.visibility === 'private') throw new Error('Gizli bir kişisel plana katılım isteği gönderilemez.')
   if ((item.blockedParticipantIds || []).includes(userId)) {
     throw new Error('Bu plandan ayrıldığın için yeniden istek gönderemezsin.')
   }
-  return setDoc(doc(db, 'trips', tripId, 'planParticipationRequests', `${item.id}_${userId}`), {
+  const reference = doc(db, 'trips', tripId, 'planParticipationRequests', `${item.id}_${userId}`)
+  const existing = await getDoc(reference)
+  if (existing.exists() && existing.data().status === 'pending') return { kind: 'pending' }
+  if (existing.exists() && existing.data().status === 'rejected') {
+    await updateDoc(reference, { status: 'pending', updatedAt: serverTimestamp() })
+    return { kind: 'reopened' }
+  }
+  await setDoc(reference, {
     planItemId: item.id,
     requesterId: userId,
     itemOwnerId: item.ownerId,
@@ -64,6 +72,7 @@ export function requestPlanParticipation(tripId, item, userId) {
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   })
+  return { kind: 'created' }
 }
 
 export async function decideParticipationRequest(tripId, item, request, decision, userId) {

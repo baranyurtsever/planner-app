@@ -36,7 +36,7 @@ P1: Gizlilik, veri bütünlüğü ve ana akışı engelleyen hatalar. P2: İşle
 - [x] **P2 / 12** — [Zaman modeli sıfır süreyi ve geçersiz tarihleri kabul ediyor](issues/12-todo.md)
 - [x] **P2 / 13** — [Takvim yerel gün ve çok günlük etkinlikleri yanlış gösteriyor](issues/13-todo.md)
 - [x] **P2 / 14** — [Kayıt formu sonrası hata yetim profil bırakabiliyor](issues/14-todo.md)
-- [ ] **P2 / 15** — [Katılım isteği tekrar gönderme ve modal güncelliği eksik](issues/15-todo.md)
+- [x] **P2 / 15** — [Katılım isteği tekrar gönderme ve modal güncelliği eksik](issues/15-todo.md)
 - [ ] **P2 / 16** — [Gezi ve harcama düzenleme arayüzleri eksik](issues/16-todo.md)
 - [ ] **P2 / 17** — [Mobil takvim ve hata kurtarma kabul kriterleri eksik](issues/17-todo.md)
 - [ ] **P2 / 18** — [Test kapsamı kritik iş akışlarını doğrulamıyor](issues/18-todo.md)

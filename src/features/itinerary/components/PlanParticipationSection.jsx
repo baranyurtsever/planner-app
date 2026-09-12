@@ -93,6 +93,7 @@ export function PlanParticipationSection({ trip, item, user }) {
     !participating &&
     item.visibility !== 'private' &&
     !(item.blockedParticipantIds || []).includes(user.uid)
+  const ownPendingRequest = requests.find((request) => request.requesterId === user.uid)
   const canAddParticipant = scope === 'personal' && item.ownerId === user.uid
 
   return (
@@ -121,10 +122,13 @@ export function PlanParticipationSection({ trip, item, user }) {
               <button type="submit" className="rounded-xl bg-slate-900 px-3 py-2 text-xs font-bold text-white">Ekle</button>
             </form>
           )}
-          {canRequest && (
+          {canRequest && !ownPendingRequest && (
             <button type="button" onClick={() => run(() => requestPlanParticipation(trip.id, item, user.uid), 'Katılım isteği gönderildi.')} className="mt-4 rounded-xl bg-teal-700 px-4 py-2 text-xs font-bold text-white">
               Katılım isteği gönder
             </button>
+          )}
+          {canRequest && ownPendingRequest && (
+            <p className="mt-4 text-xs font-bold text-amber-700">Katılım isteğin beklemede</p>
           )}
           {participating && !(scope === 'personal' && item.ownerId === user.uid) && (
             <button
