@@ -16,6 +16,7 @@ const trip = {
 describe('TripDetailsView', () => {
   it('keeps participant management in the details page for the owner', () => {
     const onSaveMember = vi.fn()
+    const onSaveTrip = vi.fn()
     render(
       <TripDetailsView
         trip={trip}
@@ -23,6 +24,7 @@ describe('TripDetailsView', () => {
         onArchive={vi.fn()}
         onRemoveMember={vi.fn()}
         onSaveMember={onSaveMember}
+        onSaveTrip={onSaveTrip}
       />,
     )
 
@@ -35,6 +37,14 @@ describe('TripDetailsView', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Ekle / güncelle' }))
 
     expect(onSaveMember).toHaveBeenCalledWith('editor', 'editor')
+    fireEvent.change(screen.getByLabelText('Gezi adı'), { target: { value: 'Bangkok 2028' } })
+    fireEvent.change(screen.getByLabelText('Gezi görünürlüğü'), { target: { value: 'private' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Gezi bilgilerini kaydet' }))
+    expect(onSaveTrip).toHaveBeenCalledWith({
+      name: 'Bangkok 2028',
+      locationName: 'Bangkok',
+      visibility: 'private',
+    })
     expect(screen.getByRole('button', { name: 'Arşivle' })).toBeInTheDocument()
   })
 
@@ -46,11 +56,13 @@ describe('TripDetailsView', () => {
         onArchive={vi.fn()}
         onRemoveMember={vi.fn()}
         onSaveMember={vi.fn()}
+        onSaveTrip={vi.fn()}
       />,
     )
 
     expect(screen.getByRole('heading', { name: 'Gezi Detayları' })).toBeInTheDocument()
     expect(screen.queryByLabelText('Katılımcı kullanıcı kimliği')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Gezi adı')).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Arşivle' })).not.toBeInTheDocument()
   })
 })

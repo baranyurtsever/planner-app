@@ -6,6 +6,7 @@ import {
   createExpense,
   removeExpense,
   subscribeToTripExpenses,
+  updateExpense,
 } from '../data/expenseRepository'
 
 const initialForm = {
@@ -40,7 +41,12 @@ export function BudgetPage() {
     event.preventDefault()
     setError('')
     try {
-      await createExpense({ ...form, tripId: trip.id }, user.uid)
+      if (form.id) {
+        const { id, ...changes } = form
+        await updateExpense(id, changes)
+      } else {
+        await createExpense({ ...form, tripId: trip.id }, user.uid)
+      }
       setForm(initialForm)
     } catch (createError) {
       setError(createError.message)
@@ -116,7 +122,8 @@ export function BudgetPage() {
             <option value="trip">Gezi katılımcıları</option>
             <option value="profile">Profili görüntüleyen herkes</option>
           </select>
-          <button className="w-full rounded-xl bg-slate-900 px-5 py-3 font-bold text-white">Bütçe kalemi ekle</button>
+          <button className="w-full rounded-xl bg-slate-900 px-5 py-3 font-bold text-white">{form.id ? 'Bütçe kalemini güncelle' : 'Bütçe kalemi ekle'}</button>
+          {form.id && <button type="button" onClick={() => setForm(initialForm)} className="w-full text-sm font-bold text-slate-500">Düzenlemeyi iptal et</button>}
         </form>
         <div className="mt-4"><ErrorMessage message={error} /></div>
       </div>
@@ -159,7 +166,18 @@ export function BudgetPage() {
               <div className="text-right">
                 <p className="font-black">{Number(expense.amount).toLocaleString('tr-TR')} {expense.currency}</p>
                 {canEditExpense(expense, user.uid) && (
-                  <button onClick={() => removeExpense(expense.id)} className="mt-1 text-xs font-bold text-rose-600">Sil</button>
+                  <div className="mt-1 flex justify-end gap-3">
+                    <button onClick={() => setForm({
+                      id: expense.id,
+                      title: expense.title,
+                      amount: String(expense.amount),
+                      currency: expense.currency,
+                      visibility: expense.visibility,
+                      kind: expense.kind || 'spent',
+                      category: expense.category || 'general',
+                    })} className="text-xs font-bold text-teal-700">Düzenle</button>
+                    <button onClick={() => removeExpense(expense.id)} className="text-xs font-bold text-rose-600">Sil</button>
+                  </div>
                 )}
               </div>
             </article>

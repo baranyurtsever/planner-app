@@ -1,6 +1,6 @@
 # 16 — Gezi ve harcama düzenleme arayüzleri eksik
 
-Status: needs-triage
+Status: resolved
 Priority: P2
 Type: task
 Evidence: Kod incelemesi; özel senaryo henüz ayrı testle çalıştırılmadı.
@@ -17,9 +17,9 @@ Gezi detayları ad/konum/görünürlüğü yalnız gösteriyor; yaratıldıktan 
 
 ## Yapılacaklar ve kabul kriteri
 
-- [ ] Gezi sahipliğiyle uyumlu bilgi düzenleme ve harcama sahibi için tutar/para birimi/görünürlük düzenleme ekle. Kullanıcı profil düzenleme kapsamını ayrıca kararlaştır.
+- [x] Gezi sahipliğiyle uyumlu bilgi düzenleme ve harcama sahibi için tutar/para birimi/görünürlük düzenleme ekle. Kullanıcı profil düzenleme kapsamını ayrıca kararlaştır.
 
 ## Comments
 
 2026-09-12: Genel proje taramasında kaydedildi. Bu ticket uygulama değişikliği içermez.
-
+2026-09-12: Gezi sahibine ad, konum ve görünürlük düzenleme formu; harcama sahibine mevcut kalemi forma yükleyip güncelleme/iptal etme akışı eklendi. Etkileşim testleri yazıldı. Kullanıcı profil düzenleme, ayrı ürün kapsamı olarak bu ticket dışında bırakıldı.

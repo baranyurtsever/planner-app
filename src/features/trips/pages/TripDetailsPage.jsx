@@ -5,6 +5,7 @@ import { canManageTrip } from '../../../shared/domain/access'
 import {
   archiveTrip,
   removeTripMember,
+  updateTrip,
   updateTripMember,
 } from '../data/tripRepository'
 
@@ -20,9 +21,15 @@ export function TripDetailsView({
   onArchive,
   onRemoveMember,
   onSaveMember,
+  onSaveTrip,
 }) {
   const [memberId, setMemberId] = useState('')
   const [memberRole, setMemberRole] = useState('viewer')
+  const [tripForm, setTripForm] = useState({
+    name: trip.name,
+    locationName: trip.locationName || '',
+    visibility: trip.visibility,
+  })
   const owner = canManageTrip(trip, user.uid)
 
   function submitMember(event) {
@@ -54,6 +61,24 @@ export function TripDetailsView({
           <p className="mt-2 text-lg font-black">{trip.visibility === 'profile' ? 'Profilde açık' : 'Gizli'}</p>
         </article>
       </div>
+
+      {owner && (
+        <form
+          onSubmit={(event) => {
+            event.preventDefault()
+            onSaveTrip(tripForm)
+          }}
+          className="mt-6 grid gap-3 rounded-3xl border border-slate-200 bg-white p-6 md:grid-cols-3"
+        >
+          <input required aria-label="Gezi adı" value={tripForm.name} onChange={(event) => setTripForm({ ...tripForm, name: event.target.value })} className="rounded-xl border border-slate-200 px-4 py-3" />
+          <input aria-label="Gezi konumu" value={tripForm.locationName} onChange={(event) => setTripForm({ ...tripForm, locationName: event.target.value })} className="rounded-xl border border-slate-200 px-4 py-3" />
+          <select aria-label="Gezi görünürlüğü" value={tripForm.visibility} onChange={(event) => setTripForm({ ...tripForm, visibility: event.target.value })} className="rounded-xl border border-slate-200 px-4 py-3">
+            <option value="private">Gizli</option>
+            <option value="profile">Profilde açık</option>
+          </select>
+          <button className="rounded-xl bg-teal-800 px-5 py-3 font-bold text-white md:col-span-3">Gezi bilgilerini kaydet</button>
+        </form>
+      )}
 
       <section className="mt-6 rounded-3xl border border-slate-200 bg-white p-6">
         <p className="text-xs font-bold uppercase tracking-[0.22em] text-teal-700">Ekip</p>
@@ -153,6 +178,19 @@ export function TripDetailsPage() {
     }
   }
 
+  async function saveTrip(changes) {
+    setError('')
+    try {
+      await updateTrip(trip.id, {
+        name: changes.name.trim(),
+        locationName: changes.locationName.trim(),
+        visibility: changes.visibility,
+      })
+    } catch (nextError) {
+      setError(nextError.message)
+    }
+  }
+
   return (
     <>
       <TripDetailsView
@@ -161,6 +199,7 @@ export function TripDetailsPage() {
         onArchive={archive}
         onRemoveMember={removeMember}
         onSaveMember={saveMember}
+        onSaveTrip={saveTrip}
       />
       <div className="mt-4"><ErrorMessage message={error} /></div>
     </>
