@@ -1,6 +1,6 @@
 # 08 — Eski form verisi güncel katılımı ve kart alanlarını eziyor
 
-Status: needs-triage
+Status: resolved
 Priority: P1
 Type: task
 Evidence: Kod incelemesi; özel senaryo henüz ayrı testle çalıştırılmadı.
@@ -17,9 +17,13 @@ changePlanItem yalnız time değişse de tüm normalize kartı yazar. Açık edi
 
 ## Yapılacaklar ve kabul kriteri
 
-- [ ] Yalnız değişen içerik alanlarını yaz; katılım dizilerini içerik kaydından ayır. Güncel item aboneliğini modalda koru ve iki istemciyle lost-update testleri yap.
+- [x] Yalnız değişen içerik alanlarını yaz; katılım dizilerini içerik kaydından ayır. Güncel item aboneliğini modalda koru ve iki istemciyle lost-update testleri yap.
+
+## Answer
+
+Editör kaydı artık yalnız form açıldıktan sonra kullanıcı tarafından değiştirilen içerik alanlarını patch olarak çıkarıyor. Güncel belge transaction içinde yeniden okunup patch onun üzerine uygulanıyor; katılımcı, ayrılan ve engellenen kullanıcı dizileri form kaydının parçası değil. Takvim ve liste modalı, katılım bölümüne abonelikten gelen güncel kartı ayrıca iletiyor. Böylece başka istemcinin katılım veya farklı alan değişiklikleri eski form tarafından geri alınmıyor.
 
 ## Comments
 
 2026-09-12: Genel proje taramasında kaydedildi. Bu ticket uygulama değişikliği içermez.
-
+2026-09-12: Alan bazlı transaction güncellemesi ve canlı modal katılım verisi eklendi; stale katılım patch regresyon testiyle 42 uygulama testi geçti.

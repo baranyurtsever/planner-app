@@ -40,6 +40,17 @@ function changedPlanPatch(original, cleaned, userId) {
   )
 }
 
+const CONTENT_FIELDS = new Set([
+  'title', 'category', 'status', 'visibility', 'notes', 'location', 'time',
+])
+
+export function changedPlanContentPatch(original, cleaned, userId) {
+  return Object.fromEntries(
+    Object.entries(changedPlanPatch(original, cleaned, userId))
+      .filter(([field]) => CONTENT_FIELDS.has(field)),
+  )
+}
+
 function publicPlanPayload(planItem) {
   return {
     ...publicPlanFields(planItem),
@@ -216,6 +227,13 @@ export async function savePlanItem(trip, planItem, userId) {
     throw new Error('Bu Plan Öğesini doğrudan değiştirme yetkin yok.')
   }
 
+  if (planItem.id) {
+    const patch = changedPlanContentPatch(planItem._original, cleaned, userId)
+    if (Object.keys(patch).length === 0) return { kind: 'unchanged', id: planItem.id }
+    await updatePlanContent(trip.id, reference, patch, userId)
+    return { kind: 'item', id: reference.id }
+  }
+
   const savedItem = {
     ...cleaned,
     createdBy: planItem.createdBy || userId,
@@ -229,16 +247,27 @@ export async function savePlanItem(trip, planItem, userId) {
   return { kind: 'item', id: reference.id }
 }
 
+async function updatePlanContent(tripId, reference, patch, userId) {
+  return runTransaction(db, async (transaction) => {
+    const snapshot = await transaction.get(reference)
+    if (!snapshot.exists()) throw new Error('Plan Öğesi artık mevcut değil.')
+    const next = cleanPlanItem({ ...snapshot.data(), ...patch }, userId)
+    transaction.update(reference, { ...next, updatedAt: serverTimestamp() })
+    const publicReference = doc(db, 'trips', tripId, 'publicPlanItems', reference.id)
+    if (next.visibility === 'profile') {
+      transaction.set(publicReference, publicPlanPayload(next), { merge: true })
+    } else {
+      transaction.delete(publicReference)
+    }
+  })
+}
+
 export async function changePlanItem(trip, planItem, userId, patch) {
   if (canDirectEditPlanItem(trip, planItem, userId)) {
+    const reference = doc(db, 'trips', trip.id, 'planItems', planItem.id)
     const cleaned = cleanPlanItem({ ...planItem, ...patch }, userId)
-    const batch = writeBatch(db)
-    batch.update(doc(db, 'trips', trip.id, 'planItems', planItem.id), {
-      ...cleaned,
-      updatedAt: serverTimestamp(),
-    })
-    syncPublicPlan(batch, trip.id, planItem.id, cleaned)
-    await batch.commit()
+    const contentPatch = changedPlanContentPatch(planItem, cleaned, userId)
+    await updatePlanContent(trip.id, reference, contentPatch, userId)
     return { kind: 'item', id: planItem.id }
   }
 

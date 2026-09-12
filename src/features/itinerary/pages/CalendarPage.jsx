@@ -474,6 +474,7 @@ export function CalendarPage() {
           trip={trip}
           user={user}
           item={editor.item}
+          liveItem={items.find((item) => item.id === editor.item?.id) || editor.item}
           initialSlot={editor.initialSlot}
           readOnly={editor.readOnly}
           onClose={() => setEditor(null)}

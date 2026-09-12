@@ -149,6 +149,7 @@ export function PlanPage() {
           trip={trip}
           user={user}
           item={editor.item}
+          liveItem={items.find((item) => item.id === editor.item?.id) || editor.item}
           readOnly={editor.readOnly}
           onClose={() => setEditor(null)}
           onSaved={(result) => setNotice(

@@ -77,6 +77,7 @@ export function PlanItemEditor({
   trip,
   user,
   item = null,
+  liveItem = item,
   initialSlot = null,
   readOnly = false,
   onClose,
@@ -206,7 +207,7 @@ export function PlanItemEditor({
 
           <div className="px-6"><ErrorMessage message={error} /></div>
         </form>
-        {item && <PlanParticipationSection trip={trip} item={item} user={user} />}
+        {item && <PlanParticipationSection trip={trip} item={liveItem || item} user={user} />}
         <footer className="sticky bottom-0 flex justify-end gap-3 border-t border-slate-100 bg-white/95 px-6 py-4 backdrop-blur">
           <button type="button" onClick={onClose} className="rounded-xl border border-slate-200 px-5 py-3 font-bold">Kapat</button>
           {!effectiveReadOnly && <button type="submit" form="plan-item-editor-form" disabled={saving} className="rounded-xl bg-slate-900 px-5 py-3 font-bold text-white disabled:opacity-50">{saving ? 'Kaydediliyor…' : role === TRIP_ROLES.EDITOR && form.scope === PLAN_SCOPES.SHARED ? 'Öneri gönder' : 'Kaydet'}</button>}
