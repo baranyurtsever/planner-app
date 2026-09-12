@@ -703,7 +703,10 @@ service cloud.firestore {
       match /planParticipantDetails/{detailId} {
         allow read: if signedIn() &&
           detailId.matches('^.*_' + request.auth.uid + '$') &&
-          !hasDeparted(tripId, resource.data.planItemId, request.auth.uid);
+          (
+            resource == null ||
+            !hasDeparted(tripId, resource.data.planItemId, request.auth.uid)
+          );
         allow create: if isActiveTrip(tripId) &&
           request.resource.data.userId == request.auth.uid &&
           request.resource.data.planItemId is string &&

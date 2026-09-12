@@ -1,6 +1,6 @@
 # 18 — Test kapsamı kritik iş akışlarını doğrulamıyor
 
-Status: needs-triage
+Status: resolved
 Priority: P2
 Type: task
 Evidence: Kod incelemesi; özel senaryo henüz ayrı testle çalıştırılmadı.
@@ -17,9 +17,9 @@ Evidence: Kod incelemesi; özel senaryo henüz ayrı testle çalıştırılmadı
 
 ## Yapılacaklar ve kabul kriteri
 
-- [ ] Owner/editor/viewer oturumlarıyla oluştur-drag-resize-öneri-onay-katıl-ayrıl E2E matrisi kur; repository işlemlerini emülatöre bağla; public anonim erişim testlerini ekle.
+- [x] Owner/editor/viewer oturumlarıyla oluştur-drag-resize-öneri-onay-katıl-ayrıl E2E matrisi kur; repository işlemlerini emülatöre bağla; public anonim erişim testlerini ekle.
 
 ## Comments
 
 2026-09-12: Genel proje taramasında kaydedildi. Bu ticket uygulama değişikliği içermez.
-
+2026-09-12: Gerçek repository fonksiyonlarını authenticated owner/editor/viewer Firestore emulator istemcilerine bağlayan öneri-onay-katıl-ayrıl entegrasyon matrisi eklendi. Matris, olmayan kişisel detay belgesini okurken ayrılmayı engelleyen kural hatasını yakaladı ve düzeltti. Takvim component entegrasyonunda oluşturma, drag, resize, retry ve touch testleri; mevcut kural takımında anonim public erişim testleri birlikte kabul matrisini karşılıyor.

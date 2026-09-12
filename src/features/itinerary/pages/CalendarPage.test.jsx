@@ -169,4 +169,45 @@ describe('CalendarPage pointer interactions', () => {
     fireEvent.click(retry)
     await waitFor(() => expect(mocks.changePlanItem).toHaveBeenCalledTimes(2))
   })
+
+  it('opens creation from an empty calendar slot', () => {
+    const { container, getByTestId } = render(
+      <MemoryRouter initialEntries={['/calendar?date=2026-09-12']}>
+        <Routes>
+          <Route element={<Outlet context={{ trip, user: { uid: 'owner' } }} />}>
+            <Route path="calendar" element={<CalendarPage />} />
+          </Route>
+        </Routes>
+      </MemoryRouter>,
+    )
+    const day = container.querySelector('[data-testid="calendar-time-board"]').children[1]
+    day.getBoundingClientRect = () => ({ top: 0 })
+    fireEvent.doubleClick(day, { clientY: 640 })
+    expect(getByTestId('plan-editor')).toBeInTheDocument()
+  })
+
+  it('commits an end-edge resize through the repository', async () => {
+    const { container } = render(
+      <MemoryRouter initialEntries={['/calendar?date=2026-09-12']}>
+        <Routes>
+          <Route element={<Outlet context={{ trip, user: { uid: 'owner' } }} />}>
+            <Route path="calendar" element={<CalendarPage />} />
+          </Route>
+        </Routes>
+      </MemoryRouter>,
+    )
+    const board = container.querySelector('[data-testid="calendar-time-board"]')
+    board.getBoundingClientRect = () => ({ top: 0, left: 0, width: 764, height: 1536 })
+    const handle = container.querySelector('[data-resize-edge="end"]')
+    fireEvent.pointerDown(handle, { pointerId: 11, button: 0, clientX: 700, clientY: 830 })
+    fireEvent.pointerMove(board, { pointerId: 11, clientX: 700, clientY: 900 })
+    fireEvent.pointerUp(board, { pointerId: 11, clientX: 700, clientY: 900 })
+
+    await waitFor(() => expect(mocks.changePlanItem).toHaveBeenCalledWith(
+      trip,
+      expect.objectContaining({ id: 'plan' }),
+      'owner',
+      expect.objectContaining({ time: expect.objectContaining({ endsAt: '2026-09-12T11:00:00.000Z' }) }),
+    ))
+  })
 })
