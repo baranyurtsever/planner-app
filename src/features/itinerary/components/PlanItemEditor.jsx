@@ -14,9 +14,8 @@ import { PlanParticipationSection } from './PlanParticipationSection'
 const localTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone
 
 function toLocalDateTime(localDate, minute) {
-  const hours = String(Math.floor(minute / 60)).padStart(2, '0')
-  const minutes = String(minute % 60).padStart(2, '0')
-  return `${localDate}T${hours}:${minutes}`
+  const [year, month, day] = localDate.split('-').map(Number)
+  return new Date(Date.UTC(year, month - 1, day, 0, minute)).toISOString().slice(0, 16)
 }
 
 function initialForm(item, initialSlot, userId) {
@@ -60,7 +59,7 @@ function initialForm(item, initialSlot, userId) {
     dateOnly: Boolean(initialSlot?.dateOnly),
     localDate,
     startsAtLocal: toLocalDateTime(localDate, startMinute),
-    endsAtLocal: toLocalDateTime(localDate, Math.min(startMinute + 60, 23 * 60 + 45)),
+    endsAtLocal: toLocalDateTime(localDate, startMinute + 60),
     startTimeZone: localTimeZone,
     endTimeZone: localTimeZone,
     locationName: '',
@@ -182,8 +181,8 @@ export function PlanItemEditor({
             </label>
           ) : (
             <>
-              <label className="text-sm font-semibold text-slate-600">Başlangıç<input required type="datetime-local" value={form.startsAtLocal} onChange={(event) => setForm({ ...form, startsAtLocal: event.target.value })} className="mt-1 w-full rounded-xl border border-slate-200 px-4 py-3" /></label>
-              <label className="text-sm font-semibold text-slate-600">Bitiş<input required type="datetime-local" value={form.endsAtLocal} onChange={(event) => setForm({ ...form, endsAtLocal: event.target.value })} className="mt-1 w-full rounded-xl border border-slate-200 px-4 py-3" /></label>
+              <label className="text-sm font-semibold text-slate-600">Başlangıç<input required type="datetime-local" step="900" value={form.startsAtLocal} onChange={(event) => setForm({ ...form, startsAtLocal: event.target.value })} className="mt-1 w-full rounded-xl border border-slate-200 px-4 py-3" /></label>
+              <label className="text-sm font-semibold text-slate-600">Bitiş<input required type="datetime-local" step="900" value={form.endsAtLocal} onChange={(event) => setForm({ ...form, endsAtLocal: event.target.value })} className="mt-1 w-full rounded-xl border border-slate-200 px-4 py-3" /></label>
               <label className="text-sm font-semibold text-slate-600">Başlangıç saat dilimi<input required value={form.startTimeZone} onChange={(event) => setForm({ ...form, startTimeZone: event.target.value })} className="mt-1 w-full rounded-xl border border-slate-200 px-4 py-3" /></label>
               <label className="text-sm font-semibold text-slate-600">Bitiş saat dilimi<input required value={form.endTimeZone} onChange={(event) => setForm({ ...form, endTimeZone: event.target.value })} className="mt-1 w-full rounded-xl border border-slate-200 px-4 py-3" /></label>
             </>

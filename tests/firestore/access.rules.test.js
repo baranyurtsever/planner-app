@@ -323,6 +323,27 @@ describe('plan item integrity', () => {
         endTimeZone: 'local',
       },
     }))
+    await assertFails(setDoc(planItem, sharedPlan({
+      time: { kind: 'date', localDate: '2026-02-31' },
+    })))
+    await assertFails(setDoc(planItem, sharedPlan({
+      time: {
+        kind: 'timed',
+        startsAt: '2026-08-01T08:00:00.000Z',
+        endsAt: '2026-08-01T08:00:00.000Z',
+        startTimeZone: 'Europe/Istanbul',
+        endTimeZone: 'Europe/Istanbul',
+      },
+    })))
+    await assertFails(setDoc(planItem, sharedPlan({
+      time: {
+        kind: 'timed',
+        startsAt: '2026-08-01T08:05:00.000Z',
+        endsAt: '2026-08-01T08:20:00.000Z',
+        startTimeZone: 'Europe/Istanbul',
+        endTimeZone: 'Europe/Istanbul',
+      },
+    })))
   })
 
   it('allows only the trip owner to directly mutate shared plans', async () => {

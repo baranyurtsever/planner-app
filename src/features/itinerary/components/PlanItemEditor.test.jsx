@@ -89,6 +89,21 @@ describe('PlanItemEditor form boundaries', () => {
     expect(container.querySelectorAll('form form')).toHaveLength(0)
   })
 
+  it('rolls a late initial slot end into the next day and exposes a 15-minute step', () => {
+    render(
+      <PlanItemEditor
+        trip={trip}
+        initialSlot={{ localDate: '2026-09-12', startMinute: 23 * 60 + 45 }}
+        user={{ uid: 'owner' }}
+        onClose={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByLabelText('Başlangıç')).toHaveValue('2026-09-12T23:45')
+    expect(screen.getByLabelText('Bitiş')).toHaveValue('2026-09-13T00:45')
+    expect(screen.getByLabelText('Başlangıç')).toHaveAttribute('step', '900')
+  })
+
   it('adds a linked expense without submitting the plan item form', async () => {
     render(
       <PlanItemEditor trip={trip} item={item} user={{ uid: 'owner' }} onClose={vi.fn()} />,

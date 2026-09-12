@@ -22,6 +22,19 @@ export function createTimedPlanTime({ startsAt, endsAt, startTimeZone, endTimeZo
     throw new Error('Bitiş zamanı başlangıçtan önce olamaz.')
   }
 
+  if (Date.parse(endsAt) - Date.parse(startsAt) < 15 * 60 * 1000) {
+    throw new Error('Plan süresi en az 15 dakika olmalıdır.')
+  }
+
+  if (new Date(startsAt).getUTCMinutes() % 15 !== 0 ||
+      new Date(endsAt).getUTCMinutes() % 15 !== 0 ||
+      new Date(startsAt).getUTCSeconds() !== 0 ||
+      new Date(endsAt).getUTCSeconds() !== 0 ||
+      new Date(startsAt).getUTCMilliseconds() !== 0 ||
+      new Date(endsAt).getUTCMilliseconds() !== 0) {
+    throw new Error('Başlangıç ve bitiş 15 dakikalık aralıklara oturmalıdır.')
+  }
+
   return {
     kind: 'timed',
     startsAt,
@@ -34,6 +47,13 @@ export function createTimedPlanTime({ startsAt, endsAt, startTimeZone, endTimeZo
 export function createDateOnlyPlanTime(localDate) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(localDate)) {
     throw new Error('Tarih YYYY-AA-GG biçiminde olmalıdır.')
+  }
+  const [year, month, day] = localDate.split('-').map(Number)
+  const candidate = new Date(Date.UTC(year, month - 1, day))
+  if (candidate.getUTCFullYear() !== year ||
+      candidate.getUTCMonth() !== month - 1 ||
+      candidate.getUTCDate() !== day) {
+    throw new Error('Geçersiz takvim tarihi.')
   }
 
   return { kind: 'date', localDate }
@@ -77,7 +97,11 @@ export function zonedLocalToUtc(localDateTime, timeZone) {
 
   const firstPass = desiredWallClock - offsetAt(desiredWallClock)
   const finalInstant = desiredWallClock - offsetAt(firstPass)
-  return new Date(finalInstant).toISOString()
+  const result = new Date(finalInstant).toISOString()
+  if (utcToZonedLocal(result, timeZone) !== localDateTime) {
+    throw new Error('Bu yerel saat seçilen saat diliminde bulunmuyor.')
+  }
+  return result
 }
 
 export function utcToZonedLocal(instant, timeZone) {

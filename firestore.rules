@@ -108,7 +108,8 @@ service cloud.firestore {
             time.kind == 'date' &&
             time.keys().hasOnly(['kind', 'localDate']) &&
             time.localDate is string &&
-            time.localDate.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
+            time.localDate.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$') &&
+            timestamp.value(time.localDate + 'T00:00:00Z') is timestamp
           ) ||
           (
             time.kind == 'timed' &&
@@ -123,9 +124,9 @@ service cloud.firestore {
             time.endsAt is string &&
             time.startTimeZone is string &&
             time.endTimeZone is string &&
-            time.startsAt.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}.[0-9]{3}Z$') &&
-            time.endsAt.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}.[0-9]{3}Z$') &&
-            time.endsAt >= time.startsAt &&
+            time.startsAt.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:(00|15|30|45):00[.]000Z$') &&
+            time.endsAt.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:(00|15|30|45):00[.]000Z$') &&
+            timestamp.value(time.endsAt) >= timestamp.value(time.startsAt) + duration.value(15, 'm') &&
             time.startTimeZone.matches('^[A-Za-z_]+(/[-A-Za-z0-9_+]+)+$') &&
             time.endTimeZone.matches('^[A-Za-z_]+(/[-A-Za-z0-9_+]+)+$')
           )

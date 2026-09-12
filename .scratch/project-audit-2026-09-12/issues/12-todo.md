@@ -1,6 +1,6 @@
 # 12 — Zaman modeli sıfır süreyi ve geçersiz tarihleri kabul ediyor
 
-Status: needs-triage
+Status: resolved
 Priority: P2
 Type: task
 Evidence: Kod incelemesi; özel senaryo henüz ayrı testle çalıştırılmadı.
@@ -17,9 +17,9 @@ Başlangıç=bitiş hem domain hem kurallarda kabul ediliyor. 23:45 başlangıç
 
 ## Yapılacaklar ve kabul kriteri
 
-- [ ] En az 15 dakika ve geçerli takvim tarihi doğrulaması ekle; gece yarısı bitişini ertesi güne taşı; DST boş/çift saatler için açık davranış ve testler tanımla.
+- [x] En az 15 dakika ve geçerli takvim tarihi doğrulaması ekle; gece yarısı bitişini ertesi güne taşı; DST boş/çift saatler için açık davranış ve testler tanımla.
 
 ## Comments
 
 2026-09-12: Genel proje taramasında kaydedildi. Bu ticket uygulama değişikliği içermez.
-
+2026-09-12: Domain ve Firestore kurallarında en az 15 dakika, 15 dakikalık ızgara ve gerçek takvim tarihi doğrulandı. Gece yarısını aşan varsayılan bitiş ertesi güne taşındı. DST boş saatleri reddetme ve çift saatlerde ilk gerçekleşmeyi seçme davranışı testlerle belgelendi.

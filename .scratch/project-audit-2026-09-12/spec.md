@@ -33,7 +33,7 @@ P1: Gizlilik, veri bütünlüğü ve ana akışı engelleyen hatalar. P2: İşle
 - [x] **P2 / 09** — [Yeni kişisel kartın ilk kaydı public delete kuralına takılabilir](issues/09-todo.md)
 - [x] **P2 / 10** — [Öneri tekrarları ve önizleme eksikleri](issues/10-todo.md)
 - [x] **P2 / 11** — [Öneri patch ve karar kuralları yetersiz](issues/11-todo.md)
-- [ ] **P2 / 12** — [Zaman modeli sıfır süreyi ve geçersiz tarihleri kabul ediyor](issues/12-todo.md)
+- [x] **P2 / 12** — [Zaman modeli sıfır süreyi ve geçersiz tarihleri kabul ediyor](issues/12-todo.md)
 - [ ] **P2 / 13** — [Takvim yerel gün ve çok günlük etkinlikleri yanlış gösteriyor](issues/13-todo.md)
 - [ ] **P2 / 14** — [Kayıt formu sonrası hata yetim profil bırakabiliyor](issues/14-todo.md)
 - [ ] **P2 / 15** — [Katılım isteği tekrar gönderme ve modal güncelliği eksik](issues/15-todo.md)
