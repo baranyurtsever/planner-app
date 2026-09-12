@@ -1,6 +1,6 @@
 # 11 — Öneri patch ve karar kuralları yetersiz
 
-Status: needs-triage
+Status: resolved
 Priority: P2
 Type: task
 Evidence: Kod incelemesi; özel senaryo henüz ayrı testle çalıştırılmadı.
@@ -16,9 +16,9 @@ Update önerilerinin patch alanları/tipleri doğrulanmıyor; create önerisi g�
 
 ## Yapılacaklar ve kabul kriteri
 
-- [ ] İzinli patch şeması tanımla; onay ve hedef değişiklik tutarlılığını güvenceye al. Geçersiz time/scope/katılım patchleri ve tek başına onay için negatif testler ekle.
+- [x] İzinli patch şeması tanımla; onay ve hedef değişiklik tutarlılığını güvenceye al. Geçersiz time/scope/katılım patchleri ve tek başına onay için negatif testler ekle.
 
 ## Comments
 
 2026-09-12: Genel proje taramasında kaydedildi. Bu ticket uygulama değişikliği içermez.
-
+2026-09-12: Ortak kart önerileri içerik alanlarıyla sınırlandı; bozuk zaman, scope ve katılım patchleri engellendi. Create patch güncellemeleri yeniden doğrulanıyor. Approved kararı artık hedef kartın aynı atomik işlemde patch ile eşleşmesini gerektiriyor; negatif ve pozitif emulator testleri eklendi.

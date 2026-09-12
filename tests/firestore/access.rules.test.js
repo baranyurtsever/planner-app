@@ -469,10 +469,55 @@ describe('plan change proposals', () => {
       doc(editorDb, 'trips', 'public-trip', 'planChangeProposals', 'proposal'),
       { status: 'approved', decidedBy: 'editor' },
     ))
-    await assertSucceeds(updateDoc(
+    await assertFails(updateDoc(
       doc(ownerDb, 'trips', 'public-trip', 'planChangeProposals', 'proposal'),
       { status: 'approved', decidedBy: 'owner' },
     ))
+
+    const approvalBatch = writeBatch(ownerDb)
+    approvalBatch.update(
+      doc(ownerDb, 'trips', 'public-trip', 'planItems', 'shared-plan'),
+      { title: 'Önerilen başlık' },
+    )
+    approvalBatch.update(
+      doc(ownerDb, 'trips', 'public-trip', 'planChangeProposals', 'proposal'),
+      { status: 'approved', decidedBy: 'owner' },
+    )
+    await assertSucceeds(approvalBatch.commit())
+  })
+
+  it('rejects forbidden or malformed shared update patches', async () => {
+    const editorDb = testEnvironment.authenticatedContext('editor').firestore()
+    const proposals = collection(editorDb, 'trips', 'public-trip', 'planChangeProposals')
+    const base = {
+      proposerId: 'editor',
+      targetItemId: 'shared-plan',
+      action: 'update',
+      status: 'pending',
+    }
+
+    await assertFails(setDoc(doc(proposals, 'scope'), { ...base, patch: { scope: 'personal' } }))
+    await assertFails(setDoc(doc(proposals, 'members'), { ...base, patch: { participantIds: ['editor'] } }))
+    await assertFails(setDoc(doc(proposals, 'time'), {
+      ...base,
+      patch: { time: { kind: 'timed', startsAt: 'invalid' } },
+    }))
+  })
+
+  it('revalidates a create proposal whenever its patch is edited', async () => {
+    const editorDb = testEnvironment.authenticatedContext('editor').firestore()
+    const proposalRef = doc(editorDb, 'trips', 'public-trip', 'planChangeProposals', 'new-plan_editor')
+
+    await assertSucceeds(setDoc(proposalRef, {
+      proposerId: 'editor',
+      targetItemId: 'new-plan',
+      action: 'create',
+      patch: sharedPlan({ createdBy: 'editor' }),
+      status: 'pending',
+    }))
+    await assertFails(updateDoc(proposalRef, {
+      patch: sharedPlan({ createdBy: 'editor', time: { kind: 'date', localDate: 'tomorrow' } }),
+    }))
   })
 
   it('lets an editor reuse their target proposal slot after a decision', async () => {
