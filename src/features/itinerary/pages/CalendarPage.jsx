@@ -13,7 +13,15 @@ import {
   subscribeToPlanItems,
   subscribeToPlanProposals,
 } from '../data/planRepository'
-import { moveWeek, planItemDate, weekDates } from '../domain/calendar'
+import {
+  addCalendarDays,
+  calendarIntervals,
+  localToday,
+  moveWeek,
+  normalizeCalendarDate,
+  planItemDate,
+  weekDates,
+} from '../domain/calendar'
 import {
   CALENDAR_ROW_HEIGHT,
   layoutOverlappingItems,
@@ -22,11 +30,8 @@ import {
   snapCalendarMinute,
 } from '../domain/calendarLayout'
 import { PLAN_CATEGORY_MAP } from '../domain/planItem'
-import { utcToZonedLocal } from '../domain/planTime'
 
-const DAY_MINUTES = 24 * 60
 const DAY_HEIGHT = CALENDAR_ROW_HEIGHT * 24
-const today = () => new Date().toISOString().slice(0, 10)
 
 const categoryStyles = {
   flight: 'border-indigo-300 bg-indigo-100 text-indigo-950',
@@ -39,30 +44,6 @@ const categoryStyles = {
   shopping: 'border-amber-300 bg-amber-100 text-amber-950',
   health: 'border-red-300 bg-red-100 text-red-950',
   other: 'border-slate-300 bg-slate-100 text-slate-950',
-}
-
-function addDays(value, amount) {
-  const date = new Date(`${value}T12:00:00`)
-  date.setDate(date.getDate() + amount)
-  return date.toISOString().slice(0, 10)
-}
-
-function localMinute(instant, timeZone) {
-  const local = utcToZonedLocal(instant, timeZone)
-  const [hours, minutes] = local.slice(11).split(':').map(Number)
-  return { date: local.slice(0, 10), minute: hours * 60 + minutes }
-}
-
-function calendarInterval(item) {
-  const start = localMinute(item.time.startsAt, item.time.startTimeZone)
-  const end = localMinute(item.time.endsAt, item.time.endTimeZone)
-  const endMinute = end.date === start.date ? end.minute : DAY_MINUTES
-  return {
-    ...item,
-    localDate: start.date,
-    startMinute: start.minute,
-    endMinute: Math.max(start.minute + 15, endMinute),
-  }
 }
 
 function timeLabel(minute) {
@@ -149,7 +130,8 @@ export function CalendarPage() {
   const longPressRef = useRef(null)
   const suppressClickRef = useRef(false)
   const mobile = useMobileCalendar()
-  const anchor = searchParams.get('date') || today()
+  const currentDate = localToday()
+  const anchor = normalizeCalendarDate(searchParams.get('date'), currentDate)
   const days = useMemo(() => mobile ? [anchor] : weekDates(anchor), [anchor, mobile])
 
   useEffect(
@@ -173,14 +155,14 @@ export function CalendarPage() {
     if (!scrollRef.current) return
     const firstMinute = items
       .filter((item) => item.time?.kind === 'timed')
-      .map((item) => calendarInterval(item))
+      .flatMap((item) => calendarIntervals(item))
       .filter((item) => days.includes(item.localDate))
       .reduce((earliest, item) => Math.min(earliest, item.startMinute), 8 * 60)
     scrollRef.current.scrollTop = Math.max(0, (firstMinute / 60) * CALENDAR_ROW_HEIGHT - 80)
   }, [days, items])
 
   const officialTimed = useMemo(
-    () => items.filter((item) => item.time?.kind === 'timed').map(calendarInterval),
+    () => items.filter((item) => item.time?.kind === 'timed').flatMap(calendarIntervals),
     [items],
   )
   const proposedTimed = useMemo(() => proposals.flatMap((proposal) => {
@@ -190,7 +172,7 @@ export function CalendarPage() {
       ? { id: `proposal-${proposal.id}`, ...proposal.patch }
       : { ...original, ...proposal.patch, id: `proposal-${proposal.id}` }
     return candidate?.time?.kind === 'timed'
-      ? [{ ...calendarInterval(candidate), proposalId: proposal.id, proposerId: proposal.proposerId }]
+      ? calendarIntervals(candidate).map((interval) => ({ ...interval, proposalId: proposal.id, proposerId: proposal.proposerId }))
       : []
   }), [items, proposals])
   const proposedAllDayByDate = useMemo(() => proposals.reduce((groups, proposal) => {
@@ -220,7 +202,7 @@ export function CalendarPage() {
   }, {}), [items])
 
   function navigate(amount) {
-    const nextDate = mobile ? addDays(anchor, amount) : moveWeek(anchor, amount)
+    const nextDate = mobile ? addCalendarDays(anchor, amount) : moveWeek(anchor, amount)
     setSearchParams({ date: nextDate })
   }
 
@@ -339,7 +321,11 @@ export function CalendarPage() {
   }
 
   const interactionPreview = interaction
-    ? { ...interaction.item, ...calendarInterval({ ...interaction.item, time: interaction.preview }), id: `preview-${interaction.item.id}`, interactionPreview: true }
+    ? (() => {
+        const intervals = calendarIntervals({ ...interaction.item, time: interaction.preview })
+        const interval = intervals.find((candidate) => candidate.localDate === interaction.item.localDate) || intervals[0]
+        return interval ? { ...interval, id: `preview-${interaction.item.id}`, interactionPreview: true } : null
+      })()
     : null
   const rangeLabel = mobile
     ? new Date(`${anchor}T12:00:00`).toLocaleDateString('tr-TR', { dateStyle: 'full' })
@@ -355,7 +341,7 @@ export function CalendarPage() {
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <button onClick={() => navigate(-1)} className="rounded-full border border-slate-200 bg-white px-4 py-2 font-bold">←</button>
-          <button onClick={() => setSearchParams({ date: today() })} className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-bold">Bugün</button>
+          <button onClick={() => setSearchParams({ date: currentDate })} className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-bold">Bugün</button>
           <input
             aria-label="Takvim tarihi"
             type="date"
@@ -377,7 +363,7 @@ export function CalendarPage() {
           <div data-testid="calendar-header" className="grid border-b border-slate-200 bg-slate-50" style={{ gridTemplateColumns: `64px repeat(${days.length}, minmax(0, 1fr))` }}>
             <div />
             {days.map((date) => (
-              <div key={date} className={`border-l border-slate-200 px-2 py-3 text-center ${date === today() ? 'bg-teal-50' : ''}`}>
+              <div key={date} className={`border-l border-slate-200 px-2 py-3 text-center ${date === currentDate ? 'bg-teal-50' : ''}`}>
                 <p className="text-[10px] font-bold uppercase text-slate-400">
                   {new Date(`${date}T12:00:00`).toLocaleDateString('tr-TR', { weekday: 'short' })}
                 </p>
@@ -459,7 +445,7 @@ export function CalendarPage() {
                     const rect = event.currentTarget.getBoundingClientRect()
                     createAt(date, snapCalendarMinute(((event.clientY - rect.top) / CALENDAR_ROW_HEIGHT) * 60))
                   }}
-                  className={`relative border-l border-slate-200 ${date === today() ? 'bg-teal-50/30' : ''}`}
+                  className={`relative border-l border-slate-200 ${date === currentDate ? 'bg-teal-50/30' : ''}`}
                   style={{
                     backgroundImage: 'repeating-linear-gradient(to bottom, transparent 0, transparent 31px, rgb(226 232 240) 32px)',
                     backgroundSize: `100% ${CALENDAR_ROW_HEIGHT / 2}px`,
@@ -481,7 +467,7 @@ export function CalendarPage() {
                       onInteractionStart={beginInteraction}
                     />
                   ))}
-                  {date === today() && (() => {
+                  {date === currentDate && (() => {
                     const now = new Date()
                     const minute = now.getHours() * 60 + now.getMinutes()
                     return <div className="pointer-events-none absolute inset-x-0 z-40 border-t-2 border-rose-500" style={{ top: (minute / 60) * CALENDAR_ROW_HEIGHT }} />

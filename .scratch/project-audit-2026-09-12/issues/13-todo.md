@@ -1,6 +1,6 @@
 # 13 — Takvim yerel gün ve çok günlük etkinlikleri yanlış gösteriyor
 
-Status: needs-triage
+Status: resolved
 Priority: P2
 Type: task
 Evidence: Kod incelemesi; özel senaryo henüz ayrı testle çalıştırılmadı.
@@ -17,9 +17,9 @@ Bugün UTC toISOString ile hesaplanıyor; Türkiye'de 00–03 arası önceki gü
 
 ## Yapılacaklar ve kabul kriteri
 
-- [ ] Yerel bugün yardımcı fonksiyonu, doğrulanmış URL tarihi ve günlere bölünmüş zaman aralığı modeli kur; saat dilimli uçuş ve gece yarısı testleri ekle.
+- [x] Yerel bugün yardımcı fonksiyonu, doğrulanmış URL tarihi ve günlere bölünmüş zaman aralığı modeli kur; saat dilimli uçuş ve gece yarısı testleri ekle.
 
 ## Comments
 
 2026-09-12: Genel proje taramasında kaydedildi. Bu ticket uygulama değişikliği içermez.
-
+2026-09-12: Yerel bugün ve güvenli URL tarihi yardımcıları eklendi. Zamanlı kartlar başlangıç saat diliminde gün segmentlerine ayrılıyor; gece yarısı ve farklı varış saat dilimli uçuş senaryoları domain testleriyle doğrulandı.
