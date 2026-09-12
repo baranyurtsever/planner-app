@@ -118,16 +118,17 @@ export function PlanParticipationSection({ trip, item, user }) {
               className="mt-4 flex gap-2"
             >
               <input required value={memberId} onChange={(event) => setMemberId(event.target.value)} placeholder="Katılımcı kullanıcı kimliği" className="min-w-0 flex-1 rounded-xl border border-slate-200 px-3 py-2 text-sm" />
-              <button className="rounded-xl bg-slate-900 px-3 py-2 text-xs font-bold text-white">Ekle</button>
+              <button type="submit" className="rounded-xl bg-slate-900 px-3 py-2 text-xs font-bold text-white">Ekle</button>
             </form>
           )}
           {canRequest && (
-            <button onClick={() => run(() => requestPlanParticipation(trip.id, item, user.uid), 'Katılım isteği gönderildi.')} className="mt-4 rounded-xl bg-teal-700 px-4 py-2 text-xs font-bold text-white">
+            <button type="button" onClick={() => run(() => requestPlanParticipation(trip.id, item, user.uid), 'Katılım isteği gönderildi.')} className="mt-4 rounded-xl bg-teal-700 px-4 py-2 text-xs font-bold text-white">
               Katılım isteği gönder
             </button>
           )}
           {participating && !(scope === 'personal' && item.ownerId === user.uid) && (
             <button
+              type="button"
               onClick={() => {
                 if (window.confirm(leaveWarning)) run(() => leavePlanItem(trip.id, item, user.uid), 'Plan Öğesinden ayrıldın.')
               }}
@@ -140,7 +141,7 @@ export function PlanParticipationSection({ trip, item, user }) {
             <div className="mt-4 border-t border-slate-100 pt-3">
               <p className="text-xs font-bold text-slate-500">Yalnız Gezi Sahibi yeniden dahil edebilir</p>
               {leftParticipants.map((id) => (
-                <button key={id} onClick={() => run(() => includePlanParticipant(trip.id, item.id, id), `${id} yeniden dahil edildi.`)} className="mt-2 mr-2 rounded-full border border-slate-200 px-3 py-1 text-xs font-bold">
+                <button type="button" key={id} onClick={() => run(() => includePlanParticipant(trip.id, item.id, id), `${id} yeniden dahil edildi.`)} className="mt-2 mr-2 rounded-full border border-slate-200 px-3 py-1 text-xs font-bold">
                   {id} dahil et
                 </button>
               ))}
@@ -155,8 +156,8 @@ export function PlanParticipationSection({ trip, item, user }) {
               <div key={request.id} className="mt-3 flex items-center justify-between gap-3">
                 <span className="text-xs font-semibold">{request.requesterId}</span>
                 <div className="flex gap-2">
-                  <button onClick={() => run(() => decideParticipationRequest(trip.id, item, request, 'approved', user.uid), 'İstek kabul edildi.')} className="text-xs font-bold text-teal-700">Kabul</button>
-                  <button onClick={() => run(() => decideParticipationRequest(trip.id, item, request, 'rejected', user.uid), 'İstek reddedildi.')} className="text-xs font-bold text-rose-700">Reddet</button>
+                  <button type="button" onClick={() => run(() => decideParticipationRequest(trip.id, item, request, 'approved', user.uid), 'İstek kabul edildi.')} className="text-xs font-bold text-teal-700">Kabul</button>
+                  <button type="button" onClick={() => run(() => decideParticipationRequest(trip.id, item, request, 'rejected', user.uid), 'İstek reddedildi.')} className="text-xs font-bold text-rose-700">Reddet</button>
                 </div>
               </div>
             ))}
@@ -181,7 +182,7 @@ export function PlanParticipationSection({ trip, item, user }) {
               placeholder="Her satıra bir bağlantı"
               className="mt-2 min-h-20 w-full rounded-xl border border-slate-200 p-3 text-sm"
             />
-            <button className="mt-3 rounded-xl bg-slate-900 px-4 py-2 text-xs font-bold text-white">Kişisel bilgileri kaydet</button>
+            <button type="submit" className="mt-3 rounded-xl bg-slate-900 px-4 py-2 text-xs font-bold text-white">Kişisel bilgileri kaydet</button>
           </form>
 
           <div className="rounded-2xl border border-slate-200 bg-white p-4">
@@ -194,13 +195,13 @@ export function PlanParticipationSection({ trip, item, user }) {
                 <option value="trip">Gezi katılımcıları</option>
                 <option value="profile">Profilde açık</option>
               </select>
-              <button className="rounded-xl bg-teal-700 px-3 py-2 text-xs font-bold text-white">Ekle</button>
+              <button type="submit" className="rounded-xl bg-teal-700 px-3 py-2 text-xs font-bold text-white">Ekle</button>
             </form>
             <div className="mt-3 space-y-2">
               {expenses.map((linkedExpense) => (
                 <div key={linkedExpense.id} className="flex justify-between gap-3 rounded-xl bg-slate-50 px-3 py-2 text-xs">
                   <span>{linkedExpense.title}</span>
-                  <span className="font-bold">{Number(linkedExpense.amount).toLocaleString('tr-TR')} {linkedExpense.currency} <button onClick={() => removeExpense(linkedExpense.id)} className="ml-2 text-rose-600">Sil</button></span>
+                  <span className="font-bold">{Number(linkedExpense.amount).toLocaleString('tr-TR')} {linkedExpense.currency} <button type="button" onClick={() => removeExpense(linkedExpense.id)} className="ml-2 text-rose-600">Sil</button></span>
                 </div>
               ))}
             </div>

@@ -121,7 +121,8 @@ export function PlanItemEditor({
     <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/50 p-4 backdrop-blur-sm" onMouseDown={(event) => {
       if (event.target === event.currentTarget) onClose()
     }}>
-      <form onSubmit={submit} className="max-h-[92vh] w-full max-w-4xl overflow-y-auto rounded-3xl bg-white shadow-2xl">
+      <div className="max-h-[92vh] w-full max-w-4xl overflow-y-auto rounded-3xl bg-white shadow-2xl">
+        <form id="plan-item-editor-form" onSubmit={submit}>
         <header className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-100 bg-white/95 px-6 py-5 backdrop-blur">
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.2em] text-teal-700">{form.scope === PLAN_SCOPES.SHARED ? 'Ortak plan' : 'Kişisel plan'}</p>
@@ -203,13 +204,14 @@ export function PlanItemEditor({
           <label className="text-sm font-semibold text-slate-600 md:col-span-2">Not<textarea value={form.notes} onChange={(event) => setForm({ ...form, notes: event.target.value })} className="mt-1 min-h-28 w-full rounded-xl border border-slate-200 px-4 py-3" /></label>
         </fieldset>
 
-        <div className="px-6"><ErrorMessage message={error} /></div>
+          <div className="px-6"><ErrorMessage message={error} /></div>
+        </form>
         {item && <PlanParticipationSection trip={trip} item={item} user={user} />}
         <footer className="sticky bottom-0 flex justify-end gap-3 border-t border-slate-100 bg-white/95 px-6 py-4 backdrop-blur">
           <button type="button" onClick={onClose} className="rounded-xl border border-slate-200 px-5 py-3 font-bold">Kapat</button>
-          {!effectiveReadOnly && <button disabled={saving} className="rounded-xl bg-slate-900 px-5 py-3 font-bold text-white disabled:opacity-50">{saving ? 'Kaydediliyor…' : role === TRIP_ROLES.EDITOR && form.scope === PLAN_SCOPES.SHARED ? 'Öneri gönder' : 'Kaydet'}</button>}
+          {!effectiveReadOnly && <button type="submit" form="plan-item-editor-form" disabled={saving} className="rounded-xl bg-slate-900 px-5 py-3 font-bold text-white disabled:opacity-50">{saving ? 'Kaydediliyor…' : role === TRIP_ROLES.EDITOR && form.scope === PLAN_SCOPES.SHARED ? 'Öneri gönder' : 'Kaydet'}</button>}
         </footer>
-      </form>
+      </div>
     </div>
   )
 }
