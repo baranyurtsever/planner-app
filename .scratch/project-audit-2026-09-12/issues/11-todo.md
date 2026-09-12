@@ -7,7 +7,7 @@ Evidence: Kod incelemesi; özel senaryo henüz ayrı testle çalıştırılmadı
 
 ## Bulgu
 
-Update önerilerinin patch alanları/tipleri doğrulanmıyor; create önerisi güncellemesinde ilk validPlanItem kontrolü tekrarlanmıyor. Kararı approved yapmak kaynak kartın aynı işlemde güncellenmesini gerektirmiyor; mevcut kural testi de tek başına approved yazımını başarı kabul ediyor.
+Update önerilerinin patch alanları/tipleri doğrulanmıyor; create önerisi güncellemesinde ilk validPlanItem kontrolü tekrarlanmıyor. Kararı approved yapmak kaynak Plan Öğesinin aynı işlemde güncellenmesini gerektirmiyor; mevcut kural testi de tek başına approved yazımını başarı kabul ediyor.
 
 ## Kod referansları
 
@@ -21,4 +21,4 @@ Update önerilerinin patch alanları/tipleri doğrulanmıyor; create önerisi g�
 ## Comments
 
 2026-09-12: Genel proje taramasında kaydedildi. Bu ticket uygulama değişikliği içermez.
-2026-09-12: Ortak kart önerileri içerik alanlarıyla sınırlandı; bozuk zaman, scope ve katılım patchleri engellendi. Create patch güncellemeleri yeniden doğrulanıyor. Approved kararı artık hedef kartın aynı atomik işlemde patch ile eşleşmesini gerektiriyor; negatif ve pozitif emulator testleri eklendi.
+2026-09-12: Ortak Plan Öğesi önerileri içerik alanlarıyla sınırlandı; bozuk zaman, scope ve katılım patchleri engellendi. Create patch güncellemeleri yeniden doğrulanıyor. Approved kararı artık hedef Plan Öğesinin aynı atomik işlemde patch ile eşleşmesini gerektiriyor; negatif ve pozitif emulator testleri eklendi.

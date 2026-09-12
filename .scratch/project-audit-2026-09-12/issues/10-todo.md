@@ -7,7 +7,7 @@ Evidence: Kod incelemesi; özel senaryo henüz ayrı testle çalıştırılmadı
 
 ## Bulgu
 
-Sabit öneri karara bağlandıktan sonra her yeni hareket rastgele yeni belge açar; yeni pending belge tekrar bulunmaz. Panel mevcut/önerilen değerleri göstermiyor. Tarih-only öneriler hayalet olarak çizilmiyor, hayaletlerde öneren görünmüyor ve aynı kart önerileri gruplanmıyor.
+Sabit öneri karara bağlandıktan sonra her yeni hareket rastgele yeni belge açar; yeni pending belge tekrar bulunmaz. Panel mevcut/önerilen değerleri göstermiyor. Tarih-only öneriler hayalet olarak çizilmiyor, hayaletlerde öneren görünmüyor ve aynı Plan Öğesine ait öneriler gruplanmıyor.
 
 ## Kod referansları
 
@@ -22,5 +22,5 @@ Sabit öneri karara bağlandıktan sonra her yeni hareket rastgele yeni belge a�
 ## Comments
 
 2026-09-12: Genel proje taramasında kaydedildi. Bu ticket uygulama değişikliği içermez.
-2026-09-12: Öneriler target/proposer anahtarıyla tekilleştirildi; karara bağlanan yuva güvenli biçimde yeniden kullanılabilir yapıldı. Panel alan bazlı mevcut/önerilen karşılaştırması ve kart gruplaması kazandı; zamanlı ve tüm-gün önerilerinde öneren kullanıcıyla hayalet önizleme eklendi. React ve Firestore emulator testleriyle doğrulandı.
+2026-09-12: Öneriler target/proposer anahtarıyla tekilleştirildi; karara bağlanan yuva güvenli biçimde yeniden kullanılabilir yapıldı. Panel alan bazlı mevcut/önerilen karşılaştırması ve Plan Öğesi gruplaması kazandı; zamanlı ve tüm-gün önerilerinde öneren kullanıcıyla hayalet önizleme eklendi. React ve Firestore emulator testleriyle doğrulandı.
 2026-09-12: Code review sonrası aynı Plan Öğesine ve güne ait zaman önerileri tek hayalet yuvada toplandı; hayalet içindeki kullanıcı seçicisiyle öneri varyantları arasında geçiş eklendi.

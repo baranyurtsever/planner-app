@@ -22,4 +22,4 @@ Bugün UTC toISOString ile hesaplanıyor; Türkiye'de 00–03 arası önceki gü
 ## Comments
 
 2026-09-12: Genel proje taramasında kaydedildi. Bu ticket uygulama değişikliği içermez.
-2026-09-12: Yerel bugün ve güvenli URL tarihi yardımcıları eklendi. Zamanlı kartlar başlangıç saat diliminde gün segmentlerine ayrılıyor; gece yarısı ve farklı varış saat dilimli uçuş senaryoları domain testleriyle doğrulandı.
+2026-09-12: Yerel bugün ve güvenli URL tarihi yardımcıları eklendi. Zamanlı Plan Öğeleri başlangıç saat diliminde gün segmentlerine ayrılıyor; gece yarısı ve farklı varış saat dilimli uçuş senaryoları domain testleriyle doğrulandı.
