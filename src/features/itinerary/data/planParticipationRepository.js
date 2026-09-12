@@ -3,6 +3,7 @@ import {
   arrayUnion,
   collection,
   doc,
+  getDoc,
   getDocs,
   onSnapshot,
   query,
@@ -100,9 +101,11 @@ export async function leavePlanItem(tripId, item, userId) {
     where('planItemId', '==', item.id),
   )
   const expenses = await getDocs(expensesQuery)
+  const detailsRef = doc(db, 'trips', tripId, 'planParticipantDetails', `${item.id}_${userId}`)
+  const details = await getDoc(detailsRef)
   const batch = writeBatch(db)
   expenses.forEach((snapshot) => batch.delete(snapshot.ref))
-  batch.delete(doc(db, 'trips', tripId, 'planParticipantDetails', `${item.id}_${userId}`))
+  if (details.exists()) batch.delete(detailsRef)
   const itemRef = doc(db, 'trips', tripId, 'planItems', item.id)
   if (normalizedPlanScope(item) === 'shared') {
     batch.update(itemRef, {

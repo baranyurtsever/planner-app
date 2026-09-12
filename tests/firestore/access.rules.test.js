@@ -5,6 +5,7 @@ import {
   initializeTestEnvironment,
 } from '@firebase/rules-unit-testing'
 import {
+  arrayUnion,
   collection,
   deleteDoc,
   doc,
@@ -501,6 +502,27 @@ describe('plan participation', () => {
       participantIds: [],
       blockedParticipantIds: ['viewer'],
     }))
+  })
+
+  it('lets a participant leave a legacy shared plan without details or expenses', async () => {
+    await testEnvironment.withSecurityRulesDisabled(async (context) => {
+      await setDoc(
+        doc(context.firestore(), 'trips', 'public-trip', 'planItems', 'legacy-shared'),
+        {
+          scope: 'shared',
+          title: 'Eski ortak plan',
+          category: 'activity',
+          visibility: 'trip',
+          time: { kind: 'date', localDate: '2026-08-02' },
+        },
+      )
+    })
+    const db = testEnvironment.authenticatedContext('viewer').firestore()
+    const batch = writeBatch(db)
+    batch.update(doc(db, 'trips', 'public-trip', 'planItems', 'legacy-shared'), {
+      excludedParticipantIds: arrayUnion('viewer'),
+    })
+    await assertSucceeds(batch.commit())
   })
 })
 
