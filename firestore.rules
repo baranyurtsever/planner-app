@@ -245,6 +245,32 @@ service cloud.firestore {
         );
     }
 
+    function validProposalAction(tripId, proposalData) {
+      let targetPath = /databases/$(database)/documents/trips/$(tripId)/planItems/$(proposalData.targetItemId);
+      return proposalData.action in ['create', 'update', 'delete'] &&
+        proposalData.targetItemId is string &&
+        proposalData.patch is map &&
+        (
+          (
+            proposalData.action == 'create' &&
+            isSharedPlanItem(proposalData.patch) &&
+            validPlanItem(proposalData.patch)
+          ) ||
+          (
+            proposalData.action == 'update' &&
+            validSharedProposalPatch(proposalData.patch) &&
+            exists(targetPath) &&
+            isSharedPlanItem(get(targetPath).data)
+          ) ||
+          (
+            proposalData.action == 'delete' &&
+            proposalData.patch.keys().size() == 0 &&
+            exists(targetPath) &&
+            isSharedPlanItem(get(targetPath).data)
+          )
+        );
+    }
+
     function validTripMembership(tripData) {
       return tripData.memberIds is list &&
         tripData.memberRoles is map &&
@@ -521,32 +547,7 @@ service cloud.firestore {
           isEditor(trip(tripId)) &&
           request.resource.data.proposerId == request.auth.uid &&
           request.resource.data.status == 'pending' &&
-          request.resource.data.action in ['create', 'update', 'delete'] &&
-          request.resource.data.targetItemId is string &&
-          request.resource.data.patch is map &&
-          (
-            (
-              request.resource.data.action == 'create' &&
-              isSharedPlanItem(request.resource.data.patch) &&
-              validPlanItem(request.resource.data.patch)
-            ) ||
-            (
-              request.resource.data.action == 'update' &&
-              validSharedProposalPatch(request.resource.data.patch) &&
-              exists(/databases/$(database)/documents/trips/$(tripId)/planItems/$(request.resource.data.targetItemId)) &&
-              isSharedPlanItem(
-                get(/databases/$(database)/documents/trips/$(tripId)/planItems/$(request.resource.data.targetItemId)).data
-              )
-            ) ||
-            (
-              request.resource.data.action == 'delete' &&
-              request.resource.data.patch.keys().size() == 0 &&
-              exists(/databases/$(database)/documents/trips/$(tripId)/planItems/$(request.resource.data.targetItemId)) &&
-              isSharedPlanItem(
-                get(/databases/$(database)/documents/trips/$(tripId)/planItems/$(request.resource.data.targetItemId)).data
-              )
-            )
-          );
+          validProposalAction(tripId, request.resource.data);
         allow update: if isActiveTrip(tripId) &&
           (
             (
@@ -573,36 +574,12 @@ service cloud.firestore {
                 (
                   resource.data.status == 'pending' &&
                   request.resource.data.status == 'pending' &&
-                  request.resource.data.action in ['create', 'update', 'delete'] &&
-                  request.resource.data.patch is map &&
+                  validProposalAction(tripId, request.resource.data) &&
                   request.resource.data.diff(resource.data).affectedKeys().hasOnly([
                     'action',
                     'patch',
                     'updatedAt'
-                  ]) &&
-                  (
-                    (
-                      request.resource.data.action == 'create' &&
-                      isSharedPlanItem(request.resource.data.patch) &&
-                      validPlanItem(request.resource.data.patch)
-                    ) ||
-                    (
-                      request.resource.data.action == 'update' &&
-                      validSharedProposalPatch(request.resource.data.patch) &&
-                      exists(/databases/$(database)/documents/trips/$(tripId)/planItems/$(request.resource.data.targetItemId)) &&
-                      isSharedPlanItem(
-                        get(/databases/$(database)/documents/trips/$(tripId)/planItems/$(request.resource.data.targetItemId)).data
-                      )
-                    ) ||
-                    (
-                      request.resource.data.action == 'delete' &&
-                      request.resource.data.patch.keys().size() == 0 &&
-                      exists(/databases/$(database)/documents/trips/$(tripId)/planItems/$(request.resource.data.targetItemId)) &&
-                      isSharedPlanItem(
-                        get(/databases/$(database)/documents/trips/$(tripId)/planItems/$(request.resource.data.targetItemId)).data
-                      )
-                    )
-                  )
+                  ])
                 ) ||
                 (
                   resource.data.status == 'pending' &&
@@ -618,37 +595,13 @@ service cloud.firestore {
                 (
                   resource.data.status != 'pending' &&
                   request.resource.data.status == 'pending' &&
-                  request.resource.data.action in ['create', 'update', 'delete'] &&
-                  request.resource.data.patch is map &&
+                  validProposalAction(tripId, request.resource.data) &&
                   request.resource.data.diff(resource.data).affectedKeys().hasOnly([
                     'action',
                     'patch',
                     'status',
                     'updatedAt'
-                  ]) &&
-                  (
-                    (
-                      request.resource.data.action == 'create' &&
-                      isSharedPlanItem(request.resource.data.patch) &&
-                      validPlanItem(request.resource.data.patch)
-                    ) ||
-                    (
-                      request.resource.data.action == 'update' &&
-                      validSharedProposalPatch(request.resource.data.patch) &&
-                      exists(/databases/$(database)/documents/trips/$(tripId)/planItems/$(request.resource.data.targetItemId)) &&
-                      isSharedPlanItem(
-                        get(/databases/$(database)/documents/trips/$(tripId)/planItems/$(request.resource.data.targetItemId)).data
-                      )
-                    ) ||
-                    (
-                      request.resource.data.action == 'delete' &&
-                      request.resource.data.patch.keys().size() == 0 &&
-                      exists(/databases/$(database)/documents/trips/$(tripId)/planItems/$(request.resource.data.targetItemId)) &&
-                      isSharedPlanItem(
-                        get(/databases/$(database)/documents/trips/$(tripId)/planItems/$(request.resource.data.targetItemId)).data
-                      )
-                    )
-                  )
+                  ])
                 )
               )
             )
