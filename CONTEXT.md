@@ -56,6 +56,10 @@ _Avoid_: Herkese açık katılım, arkadaşlık isteği
 Zamanlı bir Plan Öğesinin mutlak başlangıç ve bitiş anları ile bu anların gösterileceği başlangıç ve bitiş saat dilimleri. Saat içermeyen bir plan yalnızca yerel tarih taşır.
 _Avoid_: Saat dilimsiz tarih-saat, tarayıcı saati
 
+**Gezi Varsayılan Saat Dilimi**:
+Gezi Sahibinin belirlediği ve yalnızca yeni Plan Öğelerinin başlangıç ile bitiş saat dilimine başlangıç değeri sağlayan IANA saat dilimi. Değiştirilmesi mevcut Plan Öğelerinin kayıtlı zamanlarını dönüştürmez.
+_Avoid_: Kullanıcının tarayıcı saati, tüm kartları geriye dönük değiştiren saat dilimi
+
 **Gezi Görünürlüğü**:
 Bir Geziyi gizli tutan veya kullanıcının profilinde görünür kılan üst seviye paylaşım ayarı. Gizli bir Gezinin altındaki kayıtlar kendi görünürlük seviyelerinden bağımsız olarak Profil Ziyaretçilerine gösterilmez.
 _Avoid_: Public, Plan Öğesi görünürlüğü

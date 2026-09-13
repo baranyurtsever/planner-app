@@ -26,7 +26,7 @@ function toLocalDateTime(localDate, minute) {
   return new Date(Date.UTC(year, month - 1, day, 0, minute)).toISOString().slice(0, 16)
 }
 
-function initialForm(item, initialSlot, userId) {
+function initialForm(item, initialSlot, userId, defaultTimeZone = localTimeZone) {
   if (item) {
     const dateOnly = item.time.kind === 'date'
     return {
@@ -68,8 +68,8 @@ function initialForm(item, initialSlot, userId) {
     localDate,
     startsAtLocal: toLocalDateTime(localDate, startMinute),
     endsAtLocal: toLocalDateTime(localDate, startMinute + 60),
-    startTimeZone: localTimeZone,
-    endTimeZone: localTimeZone,
+    startTimeZone: defaultTimeZone,
+    endTimeZone: defaultTimeZone,
     locationName: '',
     locationLat: '',
     locationLng: '',
@@ -90,7 +90,7 @@ export function PlanItemEditor({
   onClose,
   onSaved,
 }) {
-  const [form, setForm] = useState(() => initialForm(item, initialSlot, user.uid))
+  const [form, setForm] = useState(() => initialForm(item, initialSlot, user.uid, trip.defaultTimeZone))
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
   const dialogRef = useRef(null)

@@ -19,6 +19,7 @@ export async function createTrip({ name, locationName, visibility }, userId) {
     memberRoles: { [userId]: 'owner' },
     visibility,
     status: 'active',
+    defaultTimeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   }

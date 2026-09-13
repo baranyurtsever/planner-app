@@ -5,6 +5,7 @@ import { canManageTrip } from '../../../shared/domain/access'
 import { ProfileIdentity } from '../../profile/components/ProfileIdentity'
 import { getProfileByUsername } from '../../profile/data/profileRepository'
 import { useProfilesById } from '../../profile/hooks/useProfilesById'
+import { createTimeZoneOptions } from '../../itinerary/domain/timeZones'
 import {
   archiveTrip,
   removeTripMember,
@@ -17,6 +18,9 @@ const roleLabels = {
   editor: 'Düzenleyici',
   viewer: 'Katılımcı',
 }
+
+const localTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone
+const defaultTimeZoneOptions = createTimeZoneOptions()
 
 export function TripDetailsView({
   trip,
@@ -33,6 +37,7 @@ export function TripDetailsView({
     name: trip.name,
     locationName: trip.locationName || '',
     visibility: trip.visibility,
+    defaultTimeZone: trip.defaultTimeZone || localTimeZone,
   })
   const owner = canManageTrip(trip, user.uid)
 
@@ -51,7 +56,7 @@ export function TripDetailsView({
         <p className="mt-2 text-sm text-slate-500">Gezi bilgileri, katılımcılar ve roller tek yerde.</p>
       </div>
 
-      <div className="mt-6 grid gap-4 md:grid-cols-3">
+      <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <article className="rounded-2xl border border-slate-200 bg-white p-5">
           <p className="text-xs font-bold uppercase tracking-wide text-slate-400">Gezi</p>
           <p className="mt-2 text-lg font-black">{trip.name}</p>
@@ -63,6 +68,10 @@ export function TripDetailsView({
         <article className="rounded-2xl border border-slate-200 bg-white p-5">
           <p className="text-xs font-bold uppercase tracking-wide text-slate-400">Görünürlük</p>
           <p className="mt-2 text-lg font-black">{trip.visibility === 'profile' ? 'Profilde açık' : 'Gizli'}</p>
+        </article>
+        <article className="rounded-2xl border border-slate-200 bg-white p-5">
+          <p className="text-xs font-bold uppercase tracking-wide text-slate-400">Varsayılan saat dilimi</p>
+          <p className="mt-2 text-sm font-black">{defaultTimeZoneOptions.find((option) => option.value === trip.defaultTimeZone)?.label || trip.defaultTimeZone || localTimeZone}</p>
         </article>
       </div>
 
@@ -79,6 +88,9 @@ export function TripDetailsView({
           <select aria-label="Gezi görünürlüğü" value={tripForm.visibility} onChange={(event) => setTripForm({ ...tripForm, visibility: event.target.value })} className="rounded-xl border border-slate-200 px-4 py-3">
             <option value="private">Gizli</option>
             <option value="profile">Profilde açık</option>
+          </select>
+          <select aria-label="Varsayılan saat dilimi" value={tripForm.defaultTimeZone} onChange={(event) => setTripForm({ ...tripForm, defaultTimeZone: event.target.value })} className="rounded-xl border border-slate-200 px-4 py-3 md:col-span-3">
+            {defaultTimeZoneOptions.map((timeZone) => <option key={timeZone.value} value={timeZone.value}>{timeZone.label}</option>)}
           </select>
           <button className="rounded-xl bg-teal-800 px-5 py-3 font-bold text-white md:col-span-3">Gezi bilgilerini kaydet</button>
         </form>
@@ -197,6 +209,7 @@ export function TripDetailsPage() {
         name: changes.name.trim(),
         locationName: changes.locationName.trim(),
         visibility: changes.visibility,
+        defaultTimeZone: changes.defaultTimeZone,
       })
     } catch (nextError) {
       setError(nextError.message)

@@ -11,6 +11,7 @@ const trip = {
   ownerId: 'owner',
   memberIds: ['owner', 'viewer'],
   memberRoles: { owner: 'owner', viewer: 'viewer' },
+  defaultTimeZone: 'Europe/Istanbul',
 }
 
 describe('TripDetailsView', () => {
@@ -46,11 +47,13 @@ describe('TripDetailsView', () => {
     expect(screen.queryByText('owner')).not.toBeInTheDocument()
     fireEvent.change(screen.getByLabelText('Gezi adı'), { target: { value: 'Bangkok 2028' } })
     fireEvent.change(screen.getByLabelText('Gezi görünürlüğü'), { target: { value: 'private' } })
+    fireEvent.change(screen.getByLabelText('Varsayılan saat dilimi'), { target: { value: 'Asia/Bangkok' } })
     fireEvent.click(screen.getByRole('button', { name: 'Gezi bilgilerini kaydet' }))
     expect(onSaveTrip).toHaveBeenCalledWith({
       name: 'Bangkok 2028',
       locationName: 'Bangkok',
       visibility: 'private',
+      defaultTimeZone: 'Asia/Bangkok',
     })
     expect(screen.getByRole('button', { name: 'Arşivle' })).toBeInTheDocument()
   })

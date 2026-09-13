@@ -51,6 +51,7 @@ const trip = {
   ownerId: 'owner',
   memberIds: ['owner'],
   memberRoles: { owner: 'owner' },
+  defaultTimeZone: 'Asia/Bangkok',
 }
 
 const item = {
@@ -113,6 +114,8 @@ describe('PlanItemEditor form boundaries', () => {
     expect(screen.getByLabelText('Başlangıç')).toHaveAttribute('step', '60')
     expect(screen.getByLabelText('Başlangıç saat dilimi').tagName).toBe('SELECT')
     expect(screen.getByLabelText('Bitiş saat dilimi').tagName).toBe('SELECT')
+    expect(screen.getByLabelText('Başlangıç saat dilimi')).toHaveValue('Asia/Bangkok')
+    expect(screen.getByLabelText('Bitiş saat dilimi')).toHaveValue('Asia/Bangkok')
     expect(screen.getAllByRole('option', { name: /UTC[+-]\d{2}:\d{2} —/ }).length).toBeGreaterThan(0)
   })
 
