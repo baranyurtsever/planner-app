@@ -69,6 +69,7 @@ export function TripsPage() {
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.22em] text-teal-700">Çalışma alanın</p>
           <h1 className="mt-2 text-4xl font-black tracking-tight">Geziler</h1>
+          <p className="mt-3 max-w-xl text-sm leading-6 text-slate-500">Birlikte planladığınız rotalar, sıradaki duraklar ve sana ait detaylar.</p>
         </div>
         <button
           onClick={() => setShowForm((current) => !current)}
@@ -112,6 +113,10 @@ export function TripsPage() {
             </div>
             <h2 className="mt-5 text-xl font-black">{trip.name}</h2>
             <p className="mt-1 text-sm text-slate-500">{trip.locationName || 'Konum eklenmedi'}</p>
+            <div className="mt-6 flex items-center justify-between border-t border-slate-100 pt-4 text-xs font-semibold">
+              <span className="text-slate-500">{trip.memberIds.length} katılımcı</span>
+              <span className="text-teal-800">Geziyi aç <span aria-hidden="true">↗</span></span>
+            </div>
           </Link>
         ))}
       </div>

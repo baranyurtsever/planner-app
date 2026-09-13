@@ -57,6 +57,13 @@ test('owner, editor and viewer complete proposal, drag, resize, join and leave f
   const tripPath = new URL(owner.page.url()).pathname.split('/').slice(0, 4).join('/')
   await owner.page.goto(`${tripPath}/details`)
   await expect(owner.page.getByRole('heading', { name: 'Gezi Detayları' })).toBeVisible()
+  await owner.page.setViewportSize({ width: 390, height: 844 })
+  await expect(owner.page.getByRole('navigation', { name: 'Ana navigasyon' })).toBeVisible()
+  await expect(owner.page.getByRole('link', { name: 'Profilim' })).toBeInViewport()
+  expect(await owner.page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
+  await owner.page.screenshot({ path: 'test-results/design-mobile.png', fullPage: true })
+  await owner.page.setViewportSize({ width: 1440, height: 1000 })
+  await owner.page.screenshot({ path: 'test-results/design-desktop.png', fullPage: true })
   await addTripMember(owner.page, editor.uid, 'editor')
   await addTripMember(owner.page, viewer.uid, 'viewer')
 

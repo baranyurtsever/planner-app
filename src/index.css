@@ -12,3 +12,36 @@ body {
 
 button, input, select, textarea { font: inherit; }
 button, a { -webkit-tap-highlight-color: transparent; }
+
+.app-shell {
+  background: radial-gradient(ellipse at top left, #eaf2ee 0, transparent 45%), #f7f8f5;
+}
+.trip-hero {
+  background: radial-gradient(ellipse at top right, #24756c 0, transparent 65%), #103f3d;
+}
+.main-nav a {
+  flex: 1;
+  padding: 0.6rem 1rem;
+  border-radius: 0.75rem;
+  text-align: center;
+  transition: background-color 150ms;
+}
+.main-nav a:hover { background: #ffffffb3; }
+.main-nav a[aria-current="page"] {
+  background: white;
+  box-shadow: 0 1px 3px #103f3d12;
+}
+:where(button, a, input, select, textarea):focus-visible {
+  outline: 2px solid #0f766e;
+  outline-offset: 3px;
+}
+:where(button:not(:disabled), select) { cursor: pointer; }
+button:disabled { cursor: not-allowed; }
+::selection { background: #c5e5d9; color: #103f3d; }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

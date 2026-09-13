@@ -36,20 +36,24 @@ export function TripLayout() {
 
   return (
     <section>
-      <div className="rounded-3xl bg-teal-900 p-6 text-white md:p-8">
+      <div className="trip-hero rounded-3xl p-5 text-white shadow-lg shadow-teal-950/10 md:p-8">
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.22em] text-teal-200">
             {trip.locationName || 'Peregrin Gezi'}
           </p>
-          <h1 className="mt-2 text-4xl font-black tracking-tight">{trip.name}</h1>
+          <h1 className="mt-2 break-words text-3xl font-black tracking-tight sm:text-4xl">{trip.name}</h1>
+          <div className="mt-4 flex flex-wrap gap-2 text-xs font-semibold text-teal-50">
+            <span className="rounded-full border border-white/20 px-3 py-1.5">{trip.memberIds.length} katılımcı</span>
+            <span className="rounded-full border border-white/20 px-3 py-1.5">{trip.visibility === 'profile' ? 'Profilde görünür' : 'Gizli Gezi'}</span>
+          </div>
         </div>
-        <nav className="mt-8 flex gap-2 overflow-x-auto">
+        <nav aria-label="Gezi bölümleri" className="mt-6 flex flex-wrap gap-2 pb-1">
           {tabs.map(([path, label]) => (
             <NavLink
               key={path}
               to={`/app/trips/${tripId}/${path}`}
               className={({ isActive }) =>
-                `rounded-full px-4 py-2 text-sm font-bold ${
+                `shrink-0 whitespace-nowrap rounded-xl px-4 py-2.5 text-sm font-bold transition-colors ${
                   isActive ? 'bg-white text-teal-900' : 'bg-white/10 text-white'
                 }`
               }
