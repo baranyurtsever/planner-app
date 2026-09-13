@@ -54,6 +54,18 @@ describe('leavePlanItem', () => {
     expect(mocks.batchUpdate).toHaveBeenCalledOnce()
     expect(mocks.commit).toHaveBeenCalledOnce()
   })
+
+  it('rejects a departure when the user created the plan item', async () => {
+    await expect(leavePlanItem('trip', {
+      id: 'plan',
+      scope: 'shared',
+      createdBy: 'viewer',
+      excludedParticipantIds: [],
+    }, 'viewer')).rejects.toThrow('Plan Öğesini oluşturan kişi plandan ayrılamaz.')
+
+    expect(mocks.getDocs).not.toHaveBeenCalled()
+    expect(mocks.commit).not.toHaveBeenCalled()
+  })
 })
 
 describe('requestPlanParticipation', () => {

@@ -150,4 +150,17 @@ describe('PlanItemEditor form boundaries', () => {
     await waitFor(() => expect(mocks.requestPlanParticipation).toHaveBeenCalledOnce())
     expect(mocks.savePlanItem).not.toHaveBeenCalled()
   })
+
+  it('does not let the creator leave a shared plan item', async () => {
+    render(
+      <PlanItemEditor
+        trip={trip}
+        item={{ ...item, createdBy: 'owner' }}
+        user={{ uid: 'owner' }}
+        onClose={vi.fn()}
+      />,
+    )
+
+    expect(screen.queryByRole('button', { name: 'Bu plandan ayrıl' })).not.toBeInTheDocument()
+  })
 })

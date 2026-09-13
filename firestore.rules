@@ -397,6 +397,7 @@ service cloud.firestore {
             (
               isSharedPlanItem(resource.data) &&
               isParticipant(trip(tripId)) &&
+              (!('createdBy' in resource.data) || resource.data.createdBy != request.auth.uid) &&
               hasDepartedAfter(tripId, planItemId, request.auth.uid) &&
               request.resource.data.excludedParticipantIds.hasAny([request.auth.uid]) &&
               (
@@ -690,6 +691,14 @@ service cloud.firestore {
           request.resource.data.userId == request.auth.uid &&
           request.resource.data.planItemId is string &&
           departureId == request.resource.data.planItemId + '_' + request.auth.uid &&
+          (
+            !('createdBy' in planItem(tripId, request.resource.data.planItemId)) ||
+            planItem(tripId, request.resource.data.planItemId).createdBy != request.auth.uid
+          ) &&
+          (
+            !isPersonalPlanItem(planItem(tripId, request.resource.data.planItemId)) ||
+            planItem(tripId, request.resource.data.planItemId).ownerId != request.auth.uid
+          ) &&
           !exists(departurePath(tripId, request.resource.data.planItemId, request.auth.uid));
         allow update: if false;
         allow delete: if isOwner(trip(tripId));

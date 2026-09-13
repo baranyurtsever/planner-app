@@ -148,7 +148,7 @@ export function PlanParticipationSection({ trip, item, user }) {
           {canRequest && ownPendingRequest && (
             <p className="mt-4 text-xs font-bold text-amber-700">Katılım isteğin beklemede</p>
           )}
-          {participating && !(scope === 'personal' && item.ownerId === user.uid) && (
+          {participating && item.createdBy !== user.uid && !(scope === 'personal' && item.ownerId === user.uid) && (
             <button
               type="button"
               onClick={() => {

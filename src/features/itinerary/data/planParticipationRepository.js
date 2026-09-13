@@ -107,6 +107,9 @@ export async function includePlanParticipant(tripId, itemId, userId) {
 }
 
 export async function leavePlanItem(tripId, item, userId) {
+  if (item.createdBy === userId || (normalizedPlanScope(item) === 'personal' && item.ownerId === userId)) {
+    throw new Error('Plan Öğesini oluşturan kişi plandan ayrılamaz.')
+  }
   const expensesQuery = query(
     collection(db, 'expenses'),
     where('tripId', '==', tripId),

@@ -662,6 +662,19 @@ describe('plan participation', () => {
     await assertSucceeds(batch.commit())
   })
 
+  it('does not let the creator leave their shared plan item', async () => {
+    const db = testEnvironment.authenticatedContext('owner').firestore()
+    const batch = writeBatch(db)
+    batch.set(doc(db, 'trips', 'public-trip', 'planDepartures', 'shared-plan_owner'), {
+      planItemId: 'shared-plan',
+      userId: 'owner',
+    })
+    batch.update(doc(db, 'trips', 'public-trip', 'planItems', 'shared-plan'), {
+      excludedParticipantIds: arrayUnion('owner'),
+    })
+    await assertFails(batch.commit())
+  })
+
   it('makes linked personal data inaccessible and rejects new writes after leaving', async () => {
     await testEnvironment.withSecurityRulesDisabled(async (context) => {
       const db = context.firestore()
