@@ -47,6 +47,13 @@ const categoryStyles = {
   other: 'border-slate-300 bg-slate-100 text-slate-950',
 }
 
+const statusLabels = {
+  todo: 'Yapılacak',
+  done: 'Tamamlandı',
+  postponed: 'Ertelendi',
+  cancelled: 'İptal edildi',
+}
+
 function timeLabel(minute) {
   return `${String(Math.floor(minute / 60)).padStart(2, '0')}:${String(minute % 60).padStart(2, '0')}`
 }
@@ -96,7 +103,7 @@ function CalendarCard({
         const edge = event.target.dataset.resizeEdge
         onInteractionStart(event, item, edge || 'move')
       }}
-      className={`absolute z-10 overflow-hidden rounded-lg border px-2 py-1 text-left shadow-sm transition-shadow hover:z-30 hover:shadow-lg focus:z-30 focus:outline-none focus:ring-2 focus:ring-teal-500 ${
+      className={`group absolute z-10 rounded-lg border px-2 py-1 text-left shadow-sm transition-shadow hover:z-30 hover:shadow-lg focus:z-30 focus:outline-none focus:ring-2 focus:ring-teal-500 ${
         categoryStyles[item.category] || categoryStyles.other
       } ${item.status === 'done' ? 'opacity-65' : ''} ${item.status === 'postponed' ? 'border-dashed' : ''} ${
         item.status === 'cancelled' ? 'line-through opacity-50' : ''
@@ -127,6 +134,16 @@ function CalendarCard({
         </select>
       )}
       {height >= 48 && item.location?.name && <p className="truncate text-[10px] opacity-70">{item.location.name}</p>}
+      <aside
+        role="tooltip"
+        aria-label={`${item.title} ayrıntıları`}
+        className="absolute left-0 top-full z-50 mt-1 hidden min-w-56 rounded-xl bg-slate-950 p-3 text-xs font-medium normal-case text-white shadow-xl group-hover:block group-focus:block"
+      >
+        <p className="font-black">{item.title}</p>
+        <p>{displayTime} · {category.label} · {statusLabels[item.status] || item.status}</p>
+        {item.location?.name && <p>{item.location.name}</p>}
+        {item.notes && <p className="mt-1 text-slate-200">{item.notes}</p>}
+      </aside>
       {editable && <span data-resize-edge="end" className="absolute inset-x-0 bottom-0 h-2 cursor-ns-resize" />}
     </article>
   )

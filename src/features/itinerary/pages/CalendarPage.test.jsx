@@ -16,8 +16,8 @@ vi.mock('../data/planRepository', () => ({
       category: 'food',
       status: 'todo',
       visibility: 'trip',
-      notes: '',
-      location: { name: '', mapUrl: '', lat: null, lng: null },
+      notes: 'Pencere kenarında buluş.',
+      location: { name: 'Kadıköy', mapUrl: '', lat: null, lng: null },
       time: {
         kind: 'timed',
         startsAt: '2026-09-12T09:00:00.000Z',
@@ -146,6 +146,24 @@ describe('CalendarPage pointer interactions', () => {
     expect(selector.options).toHaveLength(2)
     fireEvent.change(selector, { target: { value: 'proposal-1' } })
     expect(selector).toHaveValue('proposal-1')
+  })
+
+  it('exposes complete Plan Item details in its hover and focus popover', () => {
+    const { getByRole } = render(
+      <MemoryRouter initialEntries={['/calendar?date=2026-09-12']}>
+        <Routes>
+          <Route element={<Outlet context={{ trip, user: { uid: 'owner' } }} />}>
+            <Route path="calendar" element={<CalendarPage />} />
+          </Route>
+        </Routes>
+      </MemoryRouter>,
+    )
+
+    const details = getByRole('tooltip', { name: 'Akşam yemeği ayrıntıları' })
+    expect(details).toHaveTextContent('Yeme–İçme')
+    expect(details).toHaveTextContent('Yapılacak')
+    expect(details).toHaveTextContent('Kadıköy')
+    expect(details).toHaveTextContent('Pencere kenarında buluş.')
   })
 
   it('keeps the capture owner mounted, commits an outside drop, and suppresses its click', async () => {
