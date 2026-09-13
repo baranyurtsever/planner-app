@@ -92,7 +92,7 @@ export function PlanParticipationSection({ trip, item, user }) {
         planItemId: item.id,
         kind: 'spent',
         category: item.category || 'general',
-      }, user.uid),
+      }, user.uid, trip),
       'Harcama bu karta bağlandı.',
     )
     setExpense({ title: '', amount: '', currency: 'TRY', visibility: 'private' })

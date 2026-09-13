@@ -352,6 +352,25 @@ describe('user-owned expenses', () => {
       }),
     )
   })
+
+  it('allows settlement only for trip-visible spending and active trip members', async () => {
+    const db = testEnvironment.authenticatedContext('viewer').firestore()
+    const valid = {
+      ownerId: 'viewer', tripId: 'public-trip', title: 'Taksi', amount: 100,
+      currency: 'TRY', kind: 'spent', visibility: 'trip', settlementCurrency: 'EUR',
+      exchangeRate: 0.02, splitParticipantIds: ['viewer', 'editor'],
+    }
+    await assertSucceeds(setDoc(doc(db, 'expenses', 'settled'), valid))
+    await assertFails(setDoc(doc(db, 'expenses', 'outsider-split'), {
+      ...valid, splitParticipantIds: ['viewer', 'outsider'],
+    }))
+    await assertFails(setDoc(doc(db, 'expenses', 'public-split'), {
+      ...valid, visibility: 'profile',
+    }))
+    await assertFails(setDoc(doc(db, 'expenses', 'invalid-rate'), {
+      ...valid, exchangeRate: 0,
+    }))
+  })
 })
 
 describe('plan item integrity', () => {

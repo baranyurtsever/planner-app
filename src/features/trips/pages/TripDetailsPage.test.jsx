@@ -12,6 +12,7 @@ const trip = {
   memberIds: ['owner', 'viewer'],
   memberRoles: { owner: 'owner', viewer: 'viewer' },
   defaultTimeZone: 'Europe/Istanbul',
+  settlementCurrency: 'TRY',
 }
 
 describe('TripDetailsView', () => {
@@ -65,6 +66,7 @@ describe('TripDetailsView', () => {
       locationName: 'Bangkok',
       visibility: 'private',
       defaultTimeZone: 'Asia/Bangkok',
+      settlementCurrency: 'TRY',
     })
     expect(screen.getByRole('button', { name: 'Arşivle' })).toBeInTheDocument()
   })

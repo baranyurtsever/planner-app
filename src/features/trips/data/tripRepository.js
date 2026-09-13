@@ -26,6 +26,7 @@ export async function createTrip({ name, locationName, visibility }, userId) {
     visibility,
     status: 'active',
     defaultTimeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    settlementCurrency: 'TRY',
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   }
@@ -64,6 +65,7 @@ export async function duplicateTrip(sourceTrip, { name, startDate }, userId) {
     visibility: 'private',
     status: 'active',
     defaultTimeZone: sourceTrip.defaultTimeZone || Intl.DateTimeFormat().resolvedOptions().timeZone,
+    settlementCurrency: sourceTrip.settlementCurrency || 'TRY',
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   }

@@ -112,6 +112,37 @@ service cloud.firestore {
         username.matches('^[a-z0-9_]+$');
     }
 
+    function validSettlementCurrency(value) {
+      return value is string && value.matches('^[A-Z]{3}$');
+    }
+
+    function validExpenseSettlement(expenseData) {
+      return !('splitParticipantIds' in expenseData) ||
+        (
+          expenseData.splitParticipantIds is list &&
+          expenseData.settlementCurrency is string &&
+          validSettlementCurrency(expenseData.settlementCurrency) &&
+          expenseData.exchangeRate is number &&
+          expenseData.exchangeRate > 0 &&
+          expenseData.splitParticipantIds.hasOnly(trip(expenseData.tripId).memberIds) &&
+          (
+            (
+              expenseData.kind == 'spent' &&
+              expenseData.visibility == 'trip' &&
+              expenseData.splitParticipantIds.size() > 0
+            ) ||
+            (
+              expenseData.visibility != 'trip' &&
+              expenseData.splitParticipantIds.size() == 0
+            ) ||
+            (
+              expenseData.kind != 'spent' &&
+              expenseData.splitParticipantIds.size() == 0
+            )
+          )
+        );
+    }
+
     function validPlanTime(time) {
       return time is map &&
         (
@@ -421,6 +452,7 @@ service cloud.firestore {
       allow create: if signedIn() &&
         request.resource.data.ownerId == request.auth.uid &&
         validTripMembership(request.resource.data) &&
+        (!('settlementCurrency' in request.resource.data) || validSettlementCurrency(request.resource.data.settlementCurrency)) &&
         request.resource.data.visibility in ['private', 'profile'] &&
         request.resource.data.status == 'active';
       allow update: if
@@ -429,6 +461,7 @@ service cloud.firestore {
           resource.data.status == 'active' &&
           request.resource.data.ownerId == resource.data.ownerId &&
           validTripMembership(request.resource.data) &&
+          (!('settlementCurrency' in request.resource.data) || validSettlementCurrency(request.resource.data.settlementCurrency)) &&
           request.resource.data.visibility in ['private', 'profile'] &&
           request.resource.data.status in ['active', 'archived']
         ) ||
@@ -946,6 +979,7 @@ service cloud.firestore {
         isActiveTrip(request.resource.data.tripId) &&
         (!('kind' in request.resource.data) ||
           request.resource.data.kind in ['planned', 'spent', 'income']) &&
+        validExpenseSettlement(request.resource.data) &&
         request.resource.data.visibility in ['private', 'trip', 'profile'];
       allow update: if signedIn() &&
         isActiveTrip(resource.data.tripId) &&
@@ -954,6 +988,7 @@ service cloud.firestore {
         request.resource.data.tripId == resource.data.tripId &&
         (!('kind' in request.resource.data) ||
           request.resource.data.kind in ['planned', 'spent', 'income']) &&
+        validExpenseSettlement(request.resource.data) &&
         request.resource.data.visibility in ['private', 'trip', 'profile'];
       allow delete: if signedIn() &&
         isActiveTrip(resource.data.tripId) &&

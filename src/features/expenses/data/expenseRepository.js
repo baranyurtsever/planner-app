@@ -11,6 +11,7 @@ import {
 } from 'firebase/firestore'
 import { db } from '../../../infrastructure/firebase/firestoreClient'
 import { assertOnline } from '../../../shared/offline/network'
+import { normalizeExpenseForWrite } from '../domain/settlement'
 
 function mergeExpenses(ownExpenses, sharedExpenses) {
   return [...new Map([...ownExpenses, ...sharedExpenses].map((expense) => [expense.id, expense])).values()]
@@ -69,13 +70,11 @@ export function subscribeToPublicTripExpenses(tripId, callback, onError = consol
   )
 }
 
-export async function createExpense(expense, userId) {
+export async function createExpense(expense, userId, trip = { memberIds: [userId], settlementCurrency: expense.currency }) {
   assertOnline()
+  const normalized = normalizeExpenseForWrite(expense, userId, trip)
   const reference = await addDoc(collection(db, 'expenses'), {
-    ...expense,
-    title: expense.title.trim(),
-    amount: Number(expense.amount),
-    ownerId: userId,
+    ...normalized,
     spentAt: expense.spentAt || new Date().toISOString(),
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
@@ -83,10 +82,12 @@ export async function createExpense(expense, userId) {
   return reference.id
 }
 
-export function updateExpense(expenseId, changes) {
+export function updateExpense(expenseId, changes, userId, trip) {
   assertOnline()
-  const nextChanges = { ...changes, updatedAt: serverTimestamp() }
-  if (changes.amount !== undefined) nextChanges.amount = Number(changes.amount)
+  const nextChanges = trip && userId
+    ? { ...normalizeExpenseForWrite(changes, userId, trip), updatedAt: serverTimestamp() }
+    : { ...changes, updatedAt: serverTimestamp() }
+  if (!trip && changes.amount !== undefined) nextChanges.amount = Number(changes.amount)
   return updateDoc(doc(db, 'expenses', expenseId), {
     ...nextChanges,
   })

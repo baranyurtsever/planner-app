@@ -24,6 +24,22 @@ _Avoid_: Public, ortak harcama
 Belirli bir Gezi kapsamında tek bir kullanıcıya ait mali kayıt. Görünürlüğünün genişletilmesi, sahipliğini veya düzenleme yetkisini değiştirmez.
 _Avoid_: Ortak masraf, paylaşılan sahiplik
 
+**Harcama Sahibi**:
+Harcamayı kaydeden, ödemeyi yapan ve kaydı değiştirebilen Gezi katılımcısı. Harcama Payı olan diğer katılımcılar Harcama Sahibi olmaz.
+_Avoid_: Ortak ödeyen, harcama yöneticisi
+
+**Harcama Payı**:
+Gezi katılımcılarıyla görünür bir Harcanan kaydın, seçilen Hesaplaşma Katılımcıları arasında eşit bölünen karşılığı.
+_Avoid_: Sahiplik payı, kişisel harcama
+
+**Hesaplaşma Katılımcısı**:
+Belirli bir Harcama Payından sorumlu Gezi katılımcısı. Yalnızca Gezi katılımcılarıyla görünür Harcamalarda bulunur.
+_Avoid_: Borçlu, Harcama Sahibi
+
+**Hesaplaşma Para Birimi**:
+Bir Gezi içindeki Harcama Paylarını ortak değerde karşılaştırmak için kullanılan para birimi. Harcamaya kaydedilen dönüşüm kuru sonradan değişmez.
+_Avoid_: Görüntüleme para birimi, canlı kur
+
 **Profil Ziyaretçisi**:
 Bir kullanıcının profilini görüntüleyen fakat görüntülediği Geziye katılımcı olmayan, oturum açması gerekmeyen kişi. Yalnızca herkese açılmış Gezi bilgilerini, Harcamaları ve plan öğelerini salt okunur görür.
 _Avoid_: Gözlemci, katılımcı, üye

@@ -6,6 +6,7 @@ import { ProfileIdentity } from '../../profile/components/ProfileIdentity'
 import { getProfileByUsername } from '../../profile/data/profileRepository'
 import { useProfilesById } from '../../profile/hooks/useProfilesById'
 import { createTimeZoneOptions } from '../../itinerary/domain/timeZones'
+import { COMMON_CURRENCIES } from '../../expenses/domain/settlement'
 import {
   archiveTrip,
   removeTripMember,
@@ -46,6 +47,7 @@ export function TripDetailsView({
     locationName: trip.locationName || '',
     visibility: trip.visibility,
     defaultTimeZone: trip.defaultTimeZone || localTimeZone,
+    settlementCurrency: trip.settlementCurrency || 'TRY',
   })
   const owner = canManageTrip(trip, user.uid)
 
@@ -64,10 +66,14 @@ export function TripDetailsView({
         <p className="mt-2 text-sm text-slate-500">Gezi bilgileri, katılımcılar ve roller tek yerde.</p>
       </div>
 
-      <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-5">
         <article className="rounded-2xl border border-slate-200 bg-white p-5">
           <p className="text-xs font-bold uppercase tracking-wide text-slate-400">Gezi</p>
           <p className="mt-2 text-lg font-black">{trip.name}</p>
+        </article>
+        <article className="rounded-2xl border border-slate-200 bg-white p-5">
+          <p className="text-xs font-bold uppercase tracking-wide text-slate-400">Hesaplaşma para birimi</p>
+          <p className="mt-2 text-lg font-black">{trip.settlementCurrency || 'TRY'}</p>
         </article>
         <article className="rounded-2xl border border-slate-200 bg-white p-5">
           <p className="text-xs font-bold uppercase tracking-wide text-slate-400">Konum</p>
@@ -100,6 +106,12 @@ export function TripDetailsView({
           <select aria-label="Varsayılan saat dilimi" value={tripForm.defaultTimeZone} onChange={(event) => setTripForm({ ...tripForm, defaultTimeZone: event.target.value })} className="min-w-0 max-w-full rounded-xl border border-slate-200 px-4 py-3 md:col-span-3">
             {defaultTimeZoneOptions.map((timeZone) => <option key={timeZone.value} value={timeZone.value}>{timeZone.label}</option>)}
           </select>
+          <label className="text-sm font-semibold text-slate-600 md:col-span-3">
+            Hesaplaşma para birimi
+            <select aria-label="Hesaplaşma para birimi" value={tripForm.settlementCurrency} onChange={(event) => setTripForm({ ...tripForm, settlementCurrency: event.target.value })} className="mt-1 w-full rounded-xl border border-slate-200 px-4 py-3">
+              {COMMON_CURRENCIES.map((currency) => <option key={currency} value={currency}>{currency}</option>)}
+            </select>
+          </label>
           <button className="rounded-xl bg-teal-800 px-5 py-3 font-bold text-white md:col-span-3">Gezi bilgilerini kaydet</button>
         </form>
       )}
@@ -273,6 +285,7 @@ export function TripDetailsPage() {
         locationName: changes.locationName.trim(),
         visibility: changes.visibility,
         defaultTimeZone: changes.defaultTimeZone,
+        settlementCurrency: changes.settlementCurrency,
       })
     } catch (nextError) {
       setError(nextError.message)

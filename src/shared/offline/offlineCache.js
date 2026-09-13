@@ -28,6 +28,7 @@ export function cacheTripForOffline(trip, userId) {
     visibility: trip.visibility,
     status: trip.status,
     defaultTimeZone: trip.defaultTimeZone,
+    settlementCurrency: trip.settlementCurrency || 'TRY',
     ownerId: trip.ownerId,
     memberCount: trip.memberIds?.length || trip.memberCount || 1,
     memberIds: [userId],
