@@ -21,6 +21,10 @@ describe('TripDetailsView', () => {
       <TripDetailsView
         trip={trip}
         user={{ uid: 'owner' }}
+        profilesById={{
+          owner: { displayName: 'Ada Lovelace', username: 'ada' },
+          viewer: { displayName: 'Grace Hopper', username: 'grace' },
+        }}
         onArchive={vi.fn()}
         onRemoveMember={vi.fn()}
         onSaveMember={onSaveMember}
@@ -28,15 +32,18 @@ describe('TripDetailsView', () => {
       />,
     )
 
-    fireEvent.change(screen.getByLabelText('Katılımcı kullanıcı kimliği'), {
-      target: { value: 'editor' },
+    fireEvent.change(screen.getByLabelText('Katılımcı kullanıcı adı'), {
+      target: { value: 'editor_user' },
     })
     fireEvent.change(screen.getByLabelText('Katılımcı rolü'), {
       target: { value: 'editor' },
     })
     fireEvent.click(screen.getByRole('button', { name: 'Ekle / güncelle' }))
 
-    expect(onSaveMember).toHaveBeenCalledWith('editor', 'editor')
+    expect(onSaveMember).toHaveBeenCalledWith('editor_user', 'editor')
+    expect(screen.getByText('Ada Lovelace')).toBeInTheDocument()
+    expect(screen.getByText('@ada')).toBeInTheDocument()
+    expect(screen.queryByText('owner')).not.toBeInTheDocument()
     fireEvent.change(screen.getByLabelText('Gezi adı'), { target: { value: 'Bangkok 2028' } })
     fireEvent.change(screen.getByLabelText('Gezi görünürlüğü'), { target: { value: 'private' } })
     fireEvent.click(screen.getByRole('button', { name: 'Gezi bilgilerini kaydet' }))
@@ -61,7 +68,7 @@ describe('TripDetailsView', () => {
     )
 
     expect(screen.getByRole('heading', { name: 'Gezi Detayları' })).toBeInTheDocument()
-    expect(screen.queryByLabelText('Katılımcı kullanıcı kimliği')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Katılımcı kullanıcı adı')).not.toBeInTheDocument()
     expect(screen.queryByLabelText('Gezi adı')).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Arşivle' })).not.toBeInTheDocument()
   })

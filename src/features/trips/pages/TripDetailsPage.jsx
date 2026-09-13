@@ -2,6 +2,9 @@ import { useState } from 'react'
 import { useNavigate, useOutletContext } from 'react-router-dom'
 import { ErrorMessage } from '../../../shared/components/Feedback'
 import { canManageTrip } from '../../../shared/domain/access'
+import { ProfileIdentity } from '../../profile/components/ProfileIdentity'
+import { getProfileByUsername } from '../../profile/data/profileRepository'
+import { useProfilesById } from '../../profile/hooks/useProfilesById'
 import {
   archiveTrip,
   removeTripMember,
@@ -22,8 +25,9 @@ export function TripDetailsView({
   onRemoveMember,
   onSaveMember,
   onSaveTrip,
+  profilesById = {},
 }) {
-  const [memberId, setMemberId] = useState('')
+  const [memberUsername, setMemberUsername] = useState('')
   const [memberRole, setMemberRole] = useState('viewer')
   const [tripForm, setTripForm] = useState({
     name: trip.name,
@@ -34,8 +38,8 @@ export function TripDetailsView({
 
   function submitMember(event) {
     event.preventDefault()
-    onSaveMember(memberId.trim(), memberRole)
-    setMemberId('')
+    onSaveMember(memberUsername.trim(), memberRole)
+    setMemberUsername('')
     setMemberRole('viewer')
   }
 
@@ -85,7 +89,7 @@ export function TripDetailsView({
         <h3 className="mt-2 text-2xl font-black">Katılımcılar ve roller</h3>
         <p className="mt-2 text-sm text-slate-500">
           {owner
-            ? 'Firebase kullanıcı kimliğiyle katılımcı ekleyebilir ve rolünü değiştirebilirsin.'
+            ? 'Kullanıcı adıyla katılımcı ekleyebilir ve rolünü değiştirebilirsin.'
             : 'Geziye katılan kişileri ve rollerini burada görebilirsin.'}
         </p>
 
@@ -93,10 +97,10 @@ export function TripDetailsView({
           <form onSubmit={submitMember} className="mt-5 flex flex-col gap-3 md:flex-row">
             <input
               required
-              aria-label="Katılımcı kullanıcı kimliği"
-              placeholder="Kullanıcı kimliği"
-              value={memberId}
-              onChange={(event) => setMemberId(event.target.value)}
+              aria-label="Katılımcı kullanıcı adı"
+              placeholder="Kullanıcı adı"
+              value={memberUsername}
+              onChange={(event) => setMemberUsername(event.target.value)}
               className="flex-1 rounded-xl border border-slate-200 px-4 py-3"
             />
             <select
@@ -117,9 +121,14 @@ export function TripDetailsView({
         <div className="mt-5 divide-y divide-slate-100">
           {trip.memberIds.map((id) => (
             <div key={id} className="flex items-center justify-between gap-4 py-3">
-              <div>
-                <p className="break-all text-sm font-semibold">{id}</p>
+              <div className="flex items-center gap-3">
+                <div className="grid size-9 shrink-0 place-items-center rounded-full bg-teal-50 text-sm font-black text-teal-800">
+                  {(profilesById[id]?.displayName || profilesById[id]?.username || 'P').slice(0, 1).toUpperCase()}
+                </div>
+                <div>
+                  <ProfileIdentity profile={profilesById[id]} />
                 <p className="text-xs text-slate-400">{roleLabels[trip.memberRoles[id]]}</p>
+                </div>
               </div>
               {owner && id !== trip.ownerId && (
                 <button onClick={() => onRemoveMember(id)} className="text-sm font-bold text-rose-600">
@@ -149,6 +158,7 @@ export function TripDetailsPage() {
   const { trip, user } = useOutletContext()
   const navigate = useNavigate()
   const [error, setError] = useState('')
+  const profilesById = useProfilesById(trip.memberIds)
 
   async function archive() {
     if (!window.confirm('Bu Gezi arşivlensin mi?')) return
@@ -160,10 +170,12 @@ export function TripDetailsPage() {
     }
   }
 
-  async function saveMember(memberId, role) {
+  async function saveMember(username, role) {
     setError('')
     try {
-      await updateTripMember(trip, memberId, role)
+      const profile = await getProfileByUsername(username)
+      if (!profile) throw new Error('Bu kullanıcı adıyla eşleşen bir profil bulunamadı.')
+      await updateTripMember(trip, profile.id, role)
     } catch (nextError) {
       setError(nextError.message)
     }
@@ -200,6 +212,7 @@ export function TripDetailsPage() {
         onRemoveMember={removeMember}
         onSaveMember={saveMember}
         onSaveTrip={saveTrip}
+        profilesById={profilesById}
       />
       <div className="mt-4"><ErrorMessage message={error} /></div>
     </>

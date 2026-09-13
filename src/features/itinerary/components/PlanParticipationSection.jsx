@@ -1,6 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import { createExpense, removeExpense, subscribeToTripExpenses } from '../../expenses/data/expenseRepository'
 import { normalizedPlanScope } from '../domain/planItem'
+import { ProfileIdentity } from '../../profile/components/ProfileIdentity'
+import { getProfileByUsername } from '../../profile/data/profileRepository'
+import { profileDisplayName } from '../../profile/domain/profileIdentity'
+import { useProfilesById } from '../../profile/hooks/useProfilesById'
 import {
   decideParticipationRequest,
   includePlanParticipant,
@@ -18,19 +22,25 @@ export function PlanParticipationSection({ trip, item, user }) {
   const [requests, setRequests] = useState([])
   const [details, setDetails] = useState({ note: '', links: [] })
   const [expenses, setExpenses] = useState([])
-  const [memberId, setMemberId] = useState('')
+  const [memberUsername, setMemberUsername] = useState('')
   const [expense, setExpense] = useState({ title: '', amount: '', currency: 'TRY', visibility: 'private' })
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
   const scope = normalizedPlanScope(item)
   const participating = isPlanParticipant(item, user.uid)
-  const participants = scope === 'shared'
+  const participants = useMemo(() => scope === 'shared'
     ? trip.memberIds.filter((id) => !(item.excludedParticipantIds || []).includes(id))
-    : (item.participantIds || [])
+    : (item.participantIds || []), [item.excludedParticipantIds, item.participantIds, scope, trip.memberIds])
   const leftParticipants = useMemo(() => Array.from(new Set([
     ...(item.excludedParticipantIds || []),
     ...(item.blockedParticipantIds || []),
   ])), [item.blockedParticipantIds, item.excludedParticipantIds])
+  const profileIds = useMemo(() => Array.from(new Set([
+    ...participants,
+    ...leftParticipants,
+    ...requests.map((request) => request.requesterId),
+  ])), [leftParticipants, participants, requests])
+  const profilesById = useProfilesById(profileIds)
 
   useEffect(
     () => subscribeToParticipationRequests(
@@ -88,6 +98,18 @@ export function PlanParticipationSection({ trip, item, user }) {
     setExpense({ title: '', amount: '', currency: 'TRY', visibility: 'private' })
   }
 
+  async function addParticipant(event) {
+    event.preventDefault()
+    const username = memberUsername.trim()
+    await run(async () => {
+      const profile = await getProfileByUsername(username)
+      if (!profile) throw new Error('Bu kullanıcı adıyla eşleşen bir profil bulunamadı.')
+      if (!trip.memberIds.includes(profile.id)) throw new Error('Yalnızca gezi katılımcıları bu plana eklenebilir.')
+      await includePlanParticipant(trip.id, item.id, profile.id)
+    }, 'Katılımcı eklendi.')
+    setMemberUsername('')
+  }
+
   const canRequest = scope === 'personal' &&
     item.ownerId !== user.uid &&
     !participating &&
@@ -99,7 +121,7 @@ export function PlanParticipationSection({ trip, item, user }) {
   return (
     <section className="border-t border-slate-100 bg-slate-50 px-6 py-5">
       <h3 className="text-lg font-black">Katılım ve kişisel bilgiler</h3>
-      <p className="mt-1 text-xs text-slate-500">Katılımcı kimlikleri yalnız gezi içinde görünür.</p>
+      <p className="mt-1 text-xs text-slate-500">Katılımcılar yalnız gezi içinde görünür.</p>
       {error && <p className="mt-3 text-sm font-semibold text-rose-700">{error}</p>}
       {message && <p className="mt-3 text-sm font-semibold text-teal-700">{message}</p>}
 
@@ -107,18 +129,14 @@ export function PlanParticipationSection({ trip, item, user }) {
         <div className="rounded-2xl border border-slate-200 bg-white p-4">
           <p className="text-sm font-black">Katılımcılar ({participants.length})</p>
           <div className="mt-2 flex flex-wrap gap-2">
-            {participants.map((id) => <span key={id} className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold">{id}</span>)}
+            {participants.map((id) => <span key={id} className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold"><ProfileIdentity profile={profilesById[id]} compact /></span>)}
           </div>
           {canAddParticipant && (
             <form
-              onSubmit={(event) => {
-                event.preventDefault()
-                run(() => includePlanParticipant(trip.id, item.id, memberId.trim()), 'Katılımcı eklendi.')
-                setMemberId('')
-              }}
+              onSubmit={addParticipant}
               className="mt-4 flex gap-2"
             >
-              <input required value={memberId} onChange={(event) => setMemberId(event.target.value)} placeholder="Katılımcı kullanıcı kimliği" className="min-w-0 flex-1 rounded-xl border border-slate-200 px-3 py-2 text-sm" />
+              <input required value={memberUsername} onChange={(event) => setMemberUsername(event.target.value)} placeholder="Katılımcı kullanıcı adı" className="min-w-0 flex-1 rounded-xl border border-slate-200 px-3 py-2 text-sm" />
               <button type="submit" className="rounded-xl bg-slate-900 px-3 py-2 text-xs font-bold text-white">Ekle</button>
             </form>
           )}
@@ -145,8 +163,8 @@ export function PlanParticipationSection({ trip, item, user }) {
             <div className="mt-4 border-t border-slate-100 pt-3">
               <p className="text-xs font-bold text-slate-500">Yalnız Gezi Sahibi yeniden dahil edebilir</p>
               {leftParticipants.map((id) => (
-                <button type="button" key={id} onClick={() => run(() => includePlanParticipant(trip.id, item.id, id), `${id} yeniden dahil edildi.`)} className="mt-2 mr-2 rounded-full border border-slate-200 px-3 py-1 text-xs font-bold">
-                  {id} dahil et
+                <button type="button" key={id} onClick={() => run(() => includePlanParticipant(trip.id, item.id, id), `${profileDisplayName(profilesById[id])} yeniden dahil edildi.`)} className="mt-2 mr-2 rounded-full border border-slate-200 px-3 py-1 text-xs font-bold">
+                  {profileDisplayName(profilesById[id])} dahil et
                 </button>
               ))}
             </div>
@@ -158,7 +176,7 @@ export function PlanParticipationSection({ trip, item, user }) {
             <p className="text-sm font-black">Katılım istekleri</p>
             {requests.map((request) => (
               <div key={request.id} className="mt-3 flex items-center justify-between gap-3">
-                <span className="text-xs font-semibold">{request.requesterId}</span>
+                <span className="text-xs font-semibold"><ProfileIdentity profile={profilesById[request.requesterId]} compact /></span>
                 <div className="flex gap-2">
                   <button type="button" onClick={() => run(() => decideParticipationRequest(trip.id, item, request, 'approved', user.uid), 'İstek kabul edildi.')} className="text-xs font-bold text-teal-700">Kabul</button>
                   <button type="button" onClick={() => run(() => decideParticipationRequest(trip.id, item, request, 'rejected', user.uid), 'İstek reddedildi.')} className="text-xs font-bold text-rose-700">Reddet</button>

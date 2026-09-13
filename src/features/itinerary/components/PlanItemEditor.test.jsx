@@ -8,6 +8,12 @@ const mocks = vi.hoisted(() => ({
   requestPlanParticipation: vi.fn(),
   savePlanItem: vi.fn(),
   saveOwnPlanDetails: vi.fn(),
+  getProfileById: vi.fn(),
+}))
+
+vi.mock('../../profile/data/profileRepository', () => ({
+  getProfileById: mocks.getProfileById,
+  getProfileByUsername: vi.fn(),
 }))
 
 vi.mock('../data/planRepository', () => ({
@@ -67,6 +73,7 @@ describe('PlanItemEditor form boundaries', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mocks.isPlanParticipant.mockReturnValue(true)
+    mocks.getProfileById.mockResolvedValue({ id: 'owner', displayName: 'Ada Lovelace', username: 'ada' })
   })
 
   it('saves personal details without submitting the plan item form', async () => {
@@ -87,6 +94,8 @@ describe('PlanItemEditor form boundaries', () => {
     await waitFor(() => expect(mocks.saveOwnPlanDetails).toHaveBeenCalledOnce())
     expect(mocks.savePlanItem).not.toHaveBeenCalled()
     expect(container.querySelectorAll('form form')).toHaveLength(0)
+    expect(await screen.findByText('Ada Lovelace')).toBeInTheDocument()
+    expect(screen.queryByText('owner')).not.toBeInTheDocument()
   })
 
   it('rolls a late initial slot end into the next day and exposes a 15-minute step', () => {
