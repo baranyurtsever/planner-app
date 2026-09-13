@@ -164,6 +164,7 @@ export function subscribeToPlanItems(tripId, userId, callback, onError = console
   )
   const privateOwnerQuery = query(
     collection(db, 'trips', tripId, 'planItems'),
+    where('scope', '==', PLAN_SCOPE.PERSONAL),
     where('ownerId', '==', userId),
     where('visibility', '==', 'private'),
   )
