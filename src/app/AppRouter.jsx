@@ -16,6 +16,9 @@ const PlanPage = lazy(() =>
 const CalendarPage = lazy(() =>
   import('../features/itinerary/pages/CalendarPage').then((module) => ({ default: module.CalendarPage })),
 )
+const TodayPage = lazy(() =>
+  import('../features/itinerary/pages/TodayPage').then((module) => ({ default: module.TodayPage })),
+)
 const RoutePage = lazy(() =>
   import('../features/itinerary/pages/RoutePage').then((module) => ({ default: module.RoutePage })),
 )
@@ -79,9 +82,10 @@ export function AppRouter() {
             <Route path="people/:username" element={<AppProfilePage />} />
             <Route path="profile" element={<AppProfilePage />} />
             <Route path="trips/:tripId" element={<TripLayout />}>
-              <Route index element={<Navigate to="list" replace />} />
+              <Route index element={<Navigate to="today" replace />} />
               <Route path="plan" element={<Navigate to="../list" replace />} />
               <Route path="list" element={<PlanPage />} />
+              <Route path="today" element={<TodayPage />} />
               <Route path="calendar" element={<CalendarPage />} />
               <Route path="route" element={<RoutePage />} />
               <Route path="budget" element={<BudgetPage />} />

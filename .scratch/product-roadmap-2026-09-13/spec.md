@@ -10,7 +10,7 @@ Rakip araştırmasındaki kısa vadeli fırsatları Peregrin'in grup kararı, ka
 
 - [x] [01 — Gezi daveti ve bekleyen davetler](issues/01-trip-invitations.md)
 - [x] [02 — Plan Öğesi belgeleri ve rezervasyon bilgileri](issues/02-plan-documents.md)
-- [ ] [03 — Bugün ve sıradaki görünümü](issues/03-today-view.md)
+- [x] [03 — Bugün ve sıradaki görünümü](issues/03-today-view.md)
 - [ ] [04 — ICS takvim dışa aktarma](issues/04-calendar-export.md)
 - [ ] [05 — Gezi ve Plan Öğesi çoğaltma](issues/05-duplication.md)
 - [ ] [06 — Mobil PWA kabuğu ve çevrimdışı temel erişim](issues/06-mobile-pwa.md)

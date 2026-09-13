@@ -5,6 +5,7 @@ import { ErrorMessage, LoadingScreen } from '../../../shared/components/Feedback
 import { subscribeToTrip } from '../data/tripRepository'
 
 const tabs = [
+  ['today', 'Bugün'],
   ['list', 'Liste'],
   ['calendar', 'Takvim'],
   ['route', 'Rota'],
