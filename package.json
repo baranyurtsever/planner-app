@@ -10,6 +10,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:rules": "PATH=/opt/homebrew/opt/openjdk@21/bin:$PATH firebase emulators:exec --project demo-peregrin --only firestore \"vitest run --config vitest.rules.config.js\"",
+    "test:e2e": "PATH=/opt/homebrew/opt/openjdk@21/bin:$PATH firebase emulators:exec --project demo-peregrin --only auth,firestore \"playwright test\"",
     "preview": "vite preview"
   },
   "dependencies": {
@@ -23,6 +24,7 @@
   "devDependencies": {
     "@eslint/js": "^9.32.0",
     "@firebase/rules-unit-testing": "^5.0.1",
+    "@playwright/test": "^1.63.0",
     "@tailwindcss/postcss": "^4.1.11",
     "@testing-library/jest-dom": "^7.0.0",
     "@testing-library/react": "^16.3.2",
