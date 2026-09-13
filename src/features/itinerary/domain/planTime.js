@@ -18,21 +18,8 @@ export function createTimedPlanTime({ startsAt, endsAt, startTimeZone, endTimeZo
   assertValidTimeZone(startTimeZone)
   assertValidTimeZone(endTimeZone)
 
-  if (Date.parse(endsAt) < Date.parse(startsAt)) {
-    throw new Error('Bitiş zamanı başlangıçtan önce olamaz.')
-  }
-
-  if (Date.parse(endsAt) - Date.parse(startsAt) < 15 * 60 * 1000) {
-    throw new Error('Plan süresi en az 15 dakika olmalıdır.')
-  }
-
-  if (new Date(startsAt).getUTCMinutes() % 15 !== 0 ||
-      new Date(endsAt).getUTCMinutes() % 15 !== 0 ||
-      new Date(startsAt).getUTCSeconds() !== 0 ||
-      new Date(endsAt).getUTCSeconds() !== 0 ||
-      new Date(startsAt).getUTCMilliseconds() !== 0 ||
-      new Date(endsAt).getUTCMilliseconds() !== 0) {
-    throw new Error('Başlangıç ve bitiş 15 dakikalık aralıklara oturmalıdır.')
+  if (Date.parse(endsAt) <= Date.parse(startsAt)) {
+    throw new Error('Bitiş zamanı başlangıçtan sonra olmalıdır.')
   }
 
   return {

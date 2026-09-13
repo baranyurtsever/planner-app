@@ -8,10 +8,18 @@ import {
   zonedLocalToUtc,
 } from '../domain/planTime'
 import { PLAN_CATEGORIES, PLAN_SCOPES, PLAN_STATUSES } from '../domain/planItem'
+import { createTimeZoneOptions } from '../domain/timeZones'
 import { savePlanItem } from '../data/planRepository'
 import { PlanParticipationSection } from './PlanParticipationSection'
 
 const localTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone
+
+function timeZoneReferenceDate(localDateTime) {
+  const localDate = localDateTime?.slice(0, 10)
+  return /^\d{4}-\d{2}-\d{2}$/.test(localDate)
+    ? new Date(`${localDate}T12:00:00.000Z`)
+    : new Date()
+}
 
 function toLocalDateTime(localDate, minute) {
   const [year, month, day] = localDate.split('-').map(Number)
@@ -89,6 +97,16 @@ export function PlanItemEditor({
   const role = tripRole(trip, user.uid)
   const canChooseShared = role === TRIP_ROLES.OWNER || role === TRIP_ROLES.EDITOR
   const effectiveReadOnly = readOnly
+  const startTimeZoneDate = form.startsAtLocal?.slice(0, 10)
+  const endTimeZoneDate = form.endsAtLocal?.slice(0, 10)
+  const startTimeZoneOptions = useMemo(
+    () => createTimeZoneOptions(timeZoneReferenceDate(startTimeZoneDate)),
+    [startTimeZoneDate],
+  )
+  const endTimeZoneOptions = useMemo(
+    () => createTimeZoneOptions(timeZoneReferenceDate(endTimeZoneDate)),
+    [endTimeZoneDate],
+  )
   const title = useMemo(() => {
     if (effectiveReadOnly) return 'Plan Öğesi'
     if (item) return form.scope === PLAN_SCOPES.SHARED ? 'Ortak Planı düzenle' : 'Kişisel Planı düzenle'
@@ -210,10 +228,10 @@ export function PlanItemEditor({
             </label>
           ) : (
             <>
-              <label className="text-sm font-semibold text-slate-600">Başlangıç<input required type="datetime-local" step="900" value={form.startsAtLocal} onChange={(event) => setForm({ ...form, startsAtLocal: event.target.value })} className="mt-1 w-full rounded-xl border border-slate-200 px-4 py-3" /></label>
-              <label className="text-sm font-semibold text-slate-600">Bitiş<input required type="datetime-local" step="900" value={form.endsAtLocal} onChange={(event) => setForm({ ...form, endsAtLocal: event.target.value })} className="mt-1 w-full rounded-xl border border-slate-200 px-4 py-3" /></label>
-              <label className="text-sm font-semibold text-slate-600">Başlangıç saat dilimi<input required value={form.startTimeZone} onChange={(event) => setForm({ ...form, startTimeZone: event.target.value })} className="mt-1 w-full rounded-xl border border-slate-200 px-4 py-3" /></label>
-              <label className="text-sm font-semibold text-slate-600">Bitiş saat dilimi<input required value={form.endTimeZone} onChange={(event) => setForm({ ...form, endTimeZone: event.target.value })} className="mt-1 w-full rounded-xl border border-slate-200 px-4 py-3" /></label>
+              <label className="text-sm font-semibold text-slate-600">Başlangıç<input required type="datetime-local" step="60" value={form.startsAtLocal} onChange={(event) => setForm({ ...form, startsAtLocal: event.target.value })} className="mt-1 w-full rounded-xl border border-slate-200 px-4 py-3" /></label>
+              <label className="text-sm font-semibold text-slate-600">Bitiş<input required type="datetime-local" step="60" value={form.endsAtLocal} onChange={(event) => setForm({ ...form, endsAtLocal: event.target.value })} className="mt-1 w-full rounded-xl border border-slate-200 px-4 py-3" /></label>
+              <label className="text-sm font-semibold text-slate-600">Başlangıç saat dilimi<select required aria-label="Başlangıç saat dilimi" value={form.startTimeZone} onChange={(event) => setForm({ ...form, startTimeZone: event.target.value })} className="mt-1 w-full rounded-xl border border-slate-200 px-4 py-3">{startTimeZoneOptions.map((timeZone) => <option key={timeZone.value} value={timeZone.value}>{timeZone.label}</option>)}</select></label>
+              <label className="text-sm font-semibold text-slate-600">Bitiş saat dilimi<select required aria-label="Bitiş saat dilimi" value={form.endTimeZone} onChange={(event) => setForm({ ...form, endTimeZone: event.target.value })} className="mt-1 w-full rounded-xl border border-slate-200 px-4 py-3">{endTimeZoneOptions.map((timeZone) => <option key={timeZone.value} value={timeZone.value}>{timeZone.label}</option>)}</select></label>
             </>
           )}
           <label className="text-sm font-semibold text-slate-600">

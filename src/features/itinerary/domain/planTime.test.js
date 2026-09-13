@@ -34,22 +34,25 @@ describe('plan time', () => {
         startTimeZone: 'Europe/Istanbul',
         endTimeZone: 'Asia/Bangkok',
       }),
-    ).toThrow('Bitiş zamanı başlangıçtan önce olamaz.')
+    ).toThrow('Bitiş zamanı başlangıçtan sonra olmalıdır.')
   })
 
-  it('requires at least 15 minutes on the 15-minute grid', () => {
+  it('allows arbitrary minute values while requiring the end to be later', () => {
     const base = {
       startsAt: '2026-08-10T07:00:00.000Z',
       startTimeZone: 'Europe/Istanbul',
       endTimeZone: 'Europe/Istanbul',
     }
 
-    expect(() => createTimedPlanTime({ ...base, endsAt: base.startsAt })).toThrow('en az 15 dakika')
-    expect(() => createTimedPlanTime({
+    expect(() => createTimedPlanTime({ ...base, endsAt: base.startsAt })).toThrow('sonra olmalıdır')
+    expect(createTimedPlanTime({
       ...base,
       startsAt: '2026-08-10T07:05:00.000Z',
-      endsAt: '2026-08-10T07:20:00.000Z',
-    })).toThrow('15 dakikalık')
+      endsAt: '2026-08-10T07:12:00.000Z',
+    })).toMatchObject({
+      startsAt: '2026-08-10T07:05:00.000Z',
+      endsAt: '2026-08-10T07:12:00.000Z',
+    })
   })
 
   it('keeps date-only plans free of timezone conversion', () => {

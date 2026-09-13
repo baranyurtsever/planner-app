@@ -98,7 +98,7 @@ describe('PlanItemEditor form boundaries', () => {
     expect(screen.queryByText('owner')).not.toBeInTheDocument()
   })
 
-  it('rolls a late initial slot end into the next day and exposes a 15-minute step', () => {
+  it('rolls a late initial slot end into the next day and allows any minute', () => {
     render(
       <PlanItemEditor
         trip={trip}
@@ -110,7 +110,10 @@ describe('PlanItemEditor form boundaries', () => {
 
     expect(screen.getByLabelText('Başlangıç')).toHaveValue('2026-09-12T23:45')
     expect(screen.getByLabelText('Bitiş')).toHaveValue('2026-09-13T00:45')
-    expect(screen.getByLabelText('Başlangıç')).toHaveAttribute('step', '900')
+    expect(screen.getByLabelText('Başlangıç')).toHaveAttribute('step', '60')
+    expect(screen.getByLabelText('Başlangıç saat dilimi').tagName).toBe('SELECT')
+    expect(screen.getByLabelText('Bitiş saat dilimi').tagName).toBe('SELECT')
+    expect(screen.getAllByRole('option', { name: /UTC[+-]\d{2}:\d{2} —/ }).length).toBeGreaterThan(0)
   })
 
   it('closes the modal with Escape', () => {
