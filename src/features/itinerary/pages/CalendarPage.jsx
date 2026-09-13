@@ -31,6 +31,7 @@ import {
   snapCalendarMinute,
 } from '../domain/calendarLayout'
 import { PLAN_CATEGORY_MAP } from '../domain/planItem'
+import { downloadIcsCalendar, exportablePlanItems } from '../domain/icsCalendar'
 
 const DAY_HEIGHT = CALENDAR_ROW_HEIGHT * 24
 
@@ -368,6 +369,12 @@ export function CalendarPage() {
             className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-bold"
           />
           <button onClick={() => navigate(1)} className="rounded-full border border-slate-200 bg-white px-4 py-2 font-bold">→</button>
+          <button
+            onClick={() => downloadIcsCalendar(exportablePlanItems(items, user.uid), trip.name, `${trip.name.toLowerCase().replace(/[^a-z0-9]+/g, '-') || 'peregrin'}.ics`)}
+            className="rounded-full border border-teal-700 bg-white px-4 py-2 text-sm font-bold text-teal-800"
+          >
+            Takvimi dışa aktar
+          </button>
           <button onClick={() => createAt(anchor)} className="rounded-full bg-teal-800 px-5 py-2 text-sm font-bold text-white">Plan ekle</button>
         </div>
       </div>

@@ -9,6 +9,7 @@ import {
 } from '../domain/planTime'
 import { PLAN_CATEGORIES, PLAN_SCOPES, PLAN_STATUSES } from '../domain/planItem'
 import { createTimeZoneOptions } from '../domain/timeZones'
+import { downloadIcsCalendar } from '../domain/icsCalendar'
 import { savePlanItem } from '../data/planRepository'
 import { PlanParticipationSection } from './PlanParticipationSection'
 import { PlanDocumentsSection } from './PlanDocumentsSection'
@@ -257,6 +258,7 @@ export function PlanItemEditor({
         {item && <PlanDocumentsSection trip={trip} item={liveItem || item} user={user} />}
         {item && <PlanParticipationSection trip={trip} item={liveItem || item} user={user} />}
         <footer className="sticky bottom-0 flex justify-end gap-3 border-t border-slate-100 bg-white/95 px-6 py-4 backdrop-blur">
+          {item && <button type="button" onClick={() => downloadIcsCalendar([liveItem || item], item.title, `${item.title.toLowerCase().replace(/[^a-z0-9]+/g, '-') || 'plan'}.ics`)} className="mr-auto rounded-xl border border-teal-700 px-4 py-3 font-bold text-teal-800">Takvime aktar</button>}
           <button type="button" onClick={onClose} className="rounded-xl border border-slate-200 px-5 py-3 font-bold">Kapat</button>
           {!effectiveReadOnly && <button type="submit" form="plan-item-editor-form" disabled={saving} className="rounded-xl bg-slate-900 px-5 py-3 font-bold text-white disabled:opacity-50">{saving ? 'Kaydediliyor…' : role === TRIP_ROLES.EDITOR && form.scope === PLAN_SCOPES.SHARED ? 'Öneri gönder' : 'Kaydet'}</button>}
         </footer>

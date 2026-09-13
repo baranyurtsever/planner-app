@@ -83,6 +83,9 @@ test('owner, editor and viewer complete proposal, drag, resize, join and leave f
   await owner.page.getByRole('button', { name: 'Onayla' }).click()
   await expect(owner.page.getByText('1 değişiklik karar bekliyor')).toBeHidden()
   await expect(owner.page.getByRole('heading', { name: 'Editor ortak önerisi' })).toBeVisible()
+  const calendarDownload = owner.page.waitForEvent('download')
+  await owner.page.getByRole('button', { name: 'Takvimi dışa aktar' }).click()
+  expect((await calendarDownload).suggestedFilename()).toBe('e2e-bangkok.ics')
 
   await viewer.page.goto(`${tripPath}/calendar`)
   await viewer.page.getByRole('button', { name: 'Plan ekle' }).click()
