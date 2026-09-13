@@ -1,5 +1,36 @@
 import { expect, test } from '@playwright/test'
 
+async function registerUser(browser, label) {
+  const context = await browser.newContext()
+  const page = await context.newPage()
+  const unique = `${label}_${Date.now()}`
+  const email = `${unique}@example.test`
+  await page.goto('/register')
+  await page.getByLabel('Ad soyad').fill(`E2E ${label}`)
+  await page.getByLabel('Kullanıcı adı').fill(unique.slice(0, 24))
+  await page.getByLabel('E-posta').fill(email)
+  await page.getByLabel('Şifre').fill('test-password')
+  const signUpResponse = page.waitForResponse((response) => response.url().includes('accounts:signUp'))
+  await page.getByRole('button', { name: 'Hesap oluştur' }).click()
+  await expect(page).toHaveURL(/\/app\/trips$/)
+  const uid = (await (await signUpResponse).json()).localId
+  return { context, page, uid }
+}
+
+async function addTripMember(ownerPage, uid, role) {
+  await ownerPage.getByLabel('Katılımcı kullanıcı kimliği').fill(uid)
+  await ownerPage.getByLabel('Katılımcı rolü').selectOption(role)
+  await ownerPage.getByRole('button', { name: 'Ekle / güncelle' }).click()
+  await expect(ownerPage.getByText(uid, { exact: true })).toBeVisible()
+}
+
+async function createPlan(page, { title, scope = 'personal' }) {
+  await page.getByRole('button', { name: 'Plan ekle' }).click()
+  await page.getByLabel('Plan türü').selectOption(scope)
+  await page.getByLabel('Başlık').fill(title)
+  await page.getByRole('button', { name: scope === 'shared' && title.startsWith('Editor') ? 'Öneri gönder' : 'Kaydet' }).click()
+}
+
 test('a real browser registers against the emulators and reaches the Gezi workspace', async ({ page }) => {
   const unique = Date.now()
   await page.goto('/register')
@@ -11,4 +42,75 @@ test('a real browser registers against the emulators and reaches the Gezi worksp
 
   await expect(page).toHaveURL(/\/app\/trips$/)
   await expect(page.getByRole('heading', { name: 'Geziler' })).toBeVisible()
+})
+
+test('owner, editor and viewer complete proposal, drag, resize, join and leave flows', async ({ browser }) => {
+  test.setTimeout(120_000)
+  const owner = await registerUser(browser, 'owner')
+  const editor = await registerUser(browser, 'editor')
+  const viewer = await registerUser(browser, 'viewer')
+
+  await owner.page.getByRole('button', { name: 'Yeni Gezi' }).click()
+  await owner.page.getByLabel('Gezi adı').fill('E2E Bangkok')
+  await owner.page.getByRole('button', { name: 'Oluştur' }).click()
+  await owner.page.getByRole('link', { name: /E2E Bangkok/ }).click()
+  const tripPath = new URL(owner.page.url()).pathname.split('/').slice(0, 4).join('/')
+  await owner.page.goto(`${tripPath}/details`)
+  await expect(owner.page.getByRole('heading', { name: 'Gezi Detayları' })).toBeVisible()
+  await addTripMember(owner.page, editor.uid, 'editor')
+  await addTripMember(owner.page, viewer.uid, 'viewer')
+
+  await editor.page.goto(`${tripPath}/calendar`)
+  await createPlan(editor.page, { title: 'Editor ortak önerisi', scope: 'shared' })
+  await expect(editor.page.getByText('Değişiklik önerisi gönderildi.')).toBeVisible()
+  await expect(editor.page.getByText('1 değişiklik karar bekliyor')).toBeVisible()
+
+  await owner.page.goto(`${tripPath}/calendar`)
+  await expect(owner.page.getByText('1 değişiklik karar bekliyor')).toBeVisible()
+  await owner.page.getByRole('button', { name: 'Onayla' }).click()
+  await expect(owner.page.getByText('1 değişiklik karar bekliyor')).toBeHidden()
+  await expect(owner.page.getByRole('heading', { name: 'Editor ortak önerisi' })).toBeVisible()
+
+  await viewer.page.goto(`${tripPath}/calendar`)
+  await viewer.page.getByRole('button', { name: 'Plan ekle' }).click()
+  await expect(viewer.page.getByLabel('Plan türü').locator('option[value="shared"]')).toHaveCount(0)
+  await viewer.page.getByLabel('Başlık').fill('Viewer kişisel planı')
+  await viewer.page.getByRole('button', { name: 'Kaydet' }).click()
+  await expect(viewer.page.getByRole('heading', { name: 'Viewer kişisel planı' })).toBeVisible()
+
+  await createPlan(owner.page, { title: 'Sürüklenecek ortak plan', scope: 'shared' })
+  const movable = owner.page.locator('article[title^="Sürüklenecek ortak plan"]')
+  const board = owner.page.getByTestId('calendar-time-board')
+  await expect(movable).toBeVisible()
+  await expect(movable).toHaveClass(/cursor-grab/)
+  const before = await movable.boundingBox()
+  await movable.evaluate((element) => { element.setPointerCapture = () => {} })
+  await movable.dispatchEvent('pointerdown', { pointerId: 7, pointerType: 'mouse', button: 0, clientX: before.x + before.width / 2, clientY: before.y + before.height / 2 })
+  await board.dispatchEvent('pointermove', { pointerId: 7, pointerType: 'mouse', clientX: before.x + before.width / 2 + 100, clientY: before.y + before.height / 2 + 48 })
+  await board.dispatchEvent('pointerup', { pointerId: 7, pointerType: 'mouse', clientX: before.x + before.width / 2 + 100, clientY: before.y + before.height / 2 + 48 })
+  await expect(owner.page.getByText('Takvim güncellendi.')).toBeVisible()
+
+  const resized = await movable.boundingBox()
+  await movable.locator('[data-resize-edge="end"]').dispatchEvent('pointerdown', { pointerId: 8, pointerType: 'mouse', button: 0, clientX: resized.x + resized.width / 2, clientY: resized.y + resized.height - 2 })
+  await board.dispatchEvent('pointermove', { pointerId: 8, pointerType: 'mouse', clientX: resized.x + resized.width / 2, clientY: resized.y + resized.height + 24 })
+  await board.dispatchEvent('pointerup', { pointerId: 8, pointerType: 'mouse', clientX: resized.x + resized.width / 2, clientY: resized.y + resized.height + 24 })
+  await expect(movable).toBeVisible()
+
+  await editor.page.reload()
+  await editor.page.getByRole('heading', { name: 'Viewer kişisel planı' }).click()
+  await editor.page.getByRole('button', { name: 'Katılım isteği gönder' }).click()
+  await expect(editor.page.getByText('Katılım isteği gönderildi.')).toBeVisible()
+
+  await viewer.page.reload()
+  await viewer.page.getByRole('heading', { name: 'Viewer kişisel planı' }).click()
+  await viewer.page.getByRole('button', { name: 'Kabul' }).click()
+  await expect(viewer.page.getByText('İstek kabul edildi.')).toBeVisible()
+
+  await editor.page.reload()
+  await editor.page.getByRole('heading', { name: 'Viewer kişisel planı' }).click()
+  editor.page.once('dialog', (dialog) => dialog.accept())
+  await editor.page.getByRole('button', { name: 'Bu plandan ayrıl' }).click()
+  await expect(editor.page.getByText('Plan Öğesinden ayrıldın.')).toBeVisible()
+
+  await Promise.all([owner.context.close(), editor.context.close(), viewer.context.close()])
 })
