@@ -1,5 +1,6 @@
 import { doc, onSnapshot, serverTimestamp, setDoc } from 'firebase/firestore'
 import { db } from '../../../infrastructure/firebase/firestoreClient'
+import { assertOnline } from '../../../shared/offline/network'
 
 function settingReference(tripId, userId) {
   return doc(db, 'tripSettings', `${tripId}_${userId}`)
@@ -14,6 +15,7 @@ export function subscribeToTripSetting(tripId, userId, callback, onError = conso
 }
 
 export function saveTripSetting(tripId, userId, setting) {
+  assertOnline()
   return setDoc(settingReference(tripId, userId), {
     tripId,
     userId,

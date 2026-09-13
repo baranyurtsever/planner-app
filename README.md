@@ -22,6 +22,14 @@ npm run build
 
 `test:rules` starts the Firestore Emulator and requires OpenJDK 21.
 
+## Mobile installation and offline access
+
+- Android: open the production site in a supported browser and use **Uygulamayı yükle**.
+- iPhone/iPad: open the site in Safari, then choose **Paylaş > Ana Ekrana Ekle**.
+- After a trip has loaded once, its last synced itinerary and addresses remain readable without a connection.
+- Offline mode is read-only. Changes are rejected with a clear message until the connection returns.
+- Offline data is scoped to the signed-in user and cleared on logout.
+
 ## Source layout
 
 - `src/app/` — routes, layouts, and application composition

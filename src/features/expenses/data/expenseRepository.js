@@ -10,6 +10,7 @@ import {
   where,
 } from 'firebase/firestore'
 import { db } from '../../../infrastructure/firebase/firestoreClient'
+import { assertOnline } from '../../../shared/offline/network'
 
 function mergeExpenses(ownExpenses, sharedExpenses) {
   return [...new Map([...ownExpenses, ...sharedExpenses].map((expense) => [expense.id, expense])).values()]
@@ -69,6 +70,7 @@ export function subscribeToPublicTripExpenses(tripId, callback, onError = consol
 }
 
 export async function createExpense(expense, userId) {
+  assertOnline()
   const reference = await addDoc(collection(db, 'expenses'), {
     ...expense,
     title: expense.title.trim(),
@@ -82,6 +84,7 @@ export async function createExpense(expense, userId) {
 }
 
 export function updateExpense(expenseId, changes) {
+  assertOnline()
   const nextChanges = { ...changes, updatedAt: serverTimestamp() }
   if (changes.amount !== undefined) nextChanges.amount = Number(changes.amount)
   return updateDoc(doc(db, 'expenses', expenseId), {
@@ -90,5 +93,6 @@ export function updateExpense(expenseId, changes) {
 }
 
 export function removeExpense(expenseId) {
+  assertOnline()
   return deleteDoc(doc(db, 'expenses', expenseId))
 }

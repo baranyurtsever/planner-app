@@ -10,8 +10,10 @@ import {
   writeBatch,
 } from 'firebase/firestore'
 import { db } from '../../../infrastructure/firebase/firestoreClient'
+import { assertOnline } from '../../../shared/offline/network'
 
 export function sendFriendRequest(fromId, toId) {
+  assertOnline()
   return addDoc(collection(db, 'friendRequests'), {
     fromId,
     toId,
@@ -45,6 +47,7 @@ export function subscribeToFriendships(userId, callback, onError = console.error
 }
 
 export async function acceptFriendRequest(request) {
+  assertOnline()
   const memberIds = [request.fromId, request.toId].sort()
   const friendshipId = memberIds.join('_')
   const batch = writeBatch(db)
@@ -60,9 +63,11 @@ export async function acceptFriendRequest(request) {
 }
 
 export function removeFriendship(friendshipId) {
+  assertOnline()
   return deleteDoc(doc(db, 'friendships', friendshipId))
 }
 
 export function rejectFriendRequest(requestId) {
+  assertOnline()
   return deleteDoc(doc(db, 'friendRequests', requestId))
 }

@@ -1,0 +1,17 @@
+{
+  "name": "Peregrin · Gezi planlayıcı",
+  "short_name": "Peregrin",
+  "description": "Gezilerini birlikte planla, programını çevrimdışıyken de yanında taşı.",
+  "lang": "tr",
+  "start_url": "/app/trips",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#f4f1ea",
+  "theme_color": "#0f4c5c",
+  "icons": [
+    { "src": "/icons/peregrin-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/peregrin-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/peregrin-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

@@ -14,6 +14,7 @@ import {
   writeBatch,
 } from 'firebase/firestore'
 import { db } from '../../../infrastructure/firebase/firestoreClient'
+import { assertOnline } from '../../../shared/offline/network'
 import { normalizedPlanScope } from '../domain/planItem'
 
 export function isPlanParticipant(item, userId) {
@@ -43,6 +44,7 @@ export function subscribeToOwnPlanDetails(tripId, planItemId, userId, callback, 
 }
 
 export function saveOwnPlanDetails(tripId, planItemId, userId, details) {
+  assertOnline()
   return setDoc(doc(db, 'trips', tripId, 'planParticipantDetails', `${planItemId}_${userId}`), {
     planItemId,
     userId,
@@ -53,6 +55,7 @@ export function saveOwnPlanDetails(tripId, planItemId, userId, details) {
 }
 
 export async function requestPlanParticipation(tripId, item, userId) {
+  assertOnline()
   if (item.visibility === 'private') throw new Error('Gizli bir kişisel plana katılım isteği gönderilemez.')
   if ((item.blockedParticipantIds || []).includes(userId)) {
     throw new Error('Bu plandan ayrıldığın için yeniden istek gönderemezsin.')
@@ -76,6 +79,7 @@ export async function requestPlanParticipation(tripId, item, userId) {
 }
 
 export async function decideParticipationRequest(tripId, item, request, decision, userId) {
+  assertOnline()
   const batch = writeBatch(db)
   const requestRef = doc(db, 'trips', tripId, 'planParticipationRequests', request.id)
   if (decision === 'approved') {
@@ -93,6 +97,7 @@ export async function decideParticipationRequest(tripId, item, request, decision
 }
 
 export async function includePlanParticipant(tripId, itemId, userId) {
+  assertOnline()
   const departureRef = doc(db, 'trips', tripId, 'planDepartures', `${itemId}_${userId}`)
   const departure = await getDoc(departureRef)
   const batch = writeBatch(db)
@@ -107,6 +112,7 @@ export async function includePlanParticipant(tripId, itemId, userId) {
 }
 
 export async function leavePlanItem(tripId, item, userId) {
+  assertOnline()
   if (item.createdBy === userId || (normalizedPlanScope(item) === 'personal' && item.ownerId === userId)) {
     throw new Error('Plan Öğesini oluşturan kişi plandan ayrılamaz.')
   }

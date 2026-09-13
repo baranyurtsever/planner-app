@@ -13,7 +13,7 @@ Rakip araştırmasındaki kısa vadeli fırsatları Peregrin'in grup kararı, ka
 - [x] [03 — Bugün ve sıradaki görünümü](issues/03-today-view.md)
 - [x] [04 — ICS takvim dışa aktarma](issues/04-calendar-export.md)
 - [x] [05 — Gezi ve Plan Öğesi çoğaltma](issues/05-duplication.md)
-- [ ] [06 — Mobil PWA kabuğu ve çevrimdışı temel erişim](issues/06-mobile-pwa.md)
+- [x] [06 — Mobil PWA kabuğu ve çevrimdışı temel erişim](issues/06-mobile-pwa.md)
 
 ## Ortak sınırlar
 

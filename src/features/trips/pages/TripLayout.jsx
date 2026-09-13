@@ -25,10 +25,11 @@ export function TripLayout() {
     () =>
       subscribeToTrip(
         tripId,
+        user.uid,
         setTrip,
         (subscriptionError) => setError(subscriptionError.message),
       ),
-    [tripId],
+    [tripId, user.uid],
   )
 
   if (error) return <ErrorMessage message={error} />
@@ -44,7 +45,7 @@ export function TripLayout() {
           </p>
           <h1 className="mt-2 break-words text-3xl font-black tracking-tight sm:text-4xl">{trip.name}</h1>
           <div className="mt-4 flex flex-wrap gap-2 text-xs font-semibold text-teal-50">
-            <span className="rounded-full border border-white/20 px-3 py-1.5">{trip.memberIds.length} katılımcı</span>
+            <span className="rounded-full border border-white/20 px-3 py-1.5">{trip.memberCount || trip.memberIds.length} katılımcı</span>
             <span className="rounded-full border border-white/20 px-3 py-1.5">{trip.visibility === 'profile' ? 'Profilde görünür' : 'Gizli Gezi'}</span>
           </div>
         </div>

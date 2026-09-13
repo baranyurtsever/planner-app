@@ -12,8 +12,11 @@ import {
 import { db } from '../../../infrastructure/firebase/firestoreClient'
 import { publicPlanFields } from '../../itinerary/domain/planItem'
 import { daysBetween, duplicateSharedPlanItem, planLocalDate } from '../domain/duplication'
+import { cacheTripForOffline, getOfflineTrip, getOfflineTrips } from '../../../shared/offline/offlineCache'
+import { assertOnline } from '../../../shared/offline/network'
 
 export async function createTrip({ name, locationName, visibility }, userId) {
+  assertOnline()
   const trip = {
     name: name.trim(),
     locationName: locationName.trim(),
@@ -39,6 +42,7 @@ export async function createTrip({ name, locationName, visibility }, userId) {
 }
 
 export async function duplicateTrip(sourceTrip, { name, startDate }, userId) {
+  assertOnline()
   if (sourceTrip.ownerId !== userId) throw new Error('Yalnız Gezi Sahibi bu Geziyi çoğaltabilir.')
   const snapshot = await getDocs(query(
     collection(db, 'trips', sourceTrip.id, 'planItems'),
@@ -154,11 +158,16 @@ async function writeTripWithProjection(tripId, changes) {
 }
 
 export function subscribeToUserTrips(userId, callback, onError = console.error) {
+  if (navigator.onLine === false) {
+    callback(getOfflineTrips(userId).filter((trip) => trip.status === 'active'))
+    return () => {}
+  }
   const tripsQuery = query(collection(db, 'trips'), where('memberIds', 'array-contains', userId))
   return onSnapshot(
     tripsQuery,
     async (snapshot) => {
       const trips = snapshot.docs.map((item) => ({ id: item.id, ...item.data() }))
+      trips.forEach((trip) => cacheTripForOffline(trip, userId))
       try {
         await Promise.all(trips.map((trip) => ensurePublicTripProjection(trip, userId)))
       } catch (projectionError) {
@@ -170,15 +179,35 @@ export function subscribeToUserTrips(userId, callback, onError = console.error) 
           .sort((left, right) => left.name.localeCompare(right.name, 'tr')),
       )
     },
-    onError,
+    (error) => {
+      if (navigator.onLine === false) {
+        callback(getOfflineTrips(userId).filter((trip) => trip.status === 'active'))
+        return
+      }
+      onError(error)
+    },
   )
 }
 
-export function subscribeToTrip(tripId, callback, onError = console.error) {
+export function subscribeToTrip(tripId, userId, callback, onError = console.error) {
+  if (navigator.onLine === false) {
+    callback(getOfflineTrip(userId, tripId))
+    return () => {}
+  }
   return onSnapshot(
     doc(db, 'trips', tripId),
-    (snapshot) => callback(snapshot.exists() ? { id: snapshot.id, ...snapshot.data() } : null),
-    onError,
+    (snapshot) => {
+      const trip = snapshot.exists() ? { id: snapshot.id, ...snapshot.data() } : null
+      if (trip) cacheTripForOffline(trip, userId)
+      callback(trip)
+    },
+    (error) => {
+      if (navigator.onLine === false) {
+        callback(getOfflineTrip(userId, tripId))
+        return
+      }
+      onError(error)
+    },
   )
 }
 
@@ -193,6 +222,7 @@ export async function getPublicTrip(tripId) {
 }
 
 export function updateTrip(tripId, changes) {
+  assertOnline()
   return writeTripWithProjection(tripId, changes)
 }
 

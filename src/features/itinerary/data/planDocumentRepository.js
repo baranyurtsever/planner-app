@@ -10,6 +10,7 @@ import {
   where,
 } from 'firebase/firestore'
 import { db } from '../../../infrastructure/firebase/firestoreClient'
+import { assertOnline } from '../../../shared/offline/network'
 
 const allowedKinds = new Set(['ticket', 'reservation', 'qr', 'pdf', 'link'])
 
@@ -64,6 +65,7 @@ export function subscribeToPlanDocuments(tripId, planItemId, userId, callback, o
 }
 
 export function createPlanDocument(tripId, planItemId, userId, input) {
+  assertOnline()
   return addDoc(documentsCollection(tripId, planItemId), {
     ...cleanDocument(input),
     planItemId,
@@ -74,6 +76,7 @@ export function createPlanDocument(tripId, planItemId, userId, input) {
 }
 
 export function updatePlanDocument(tripId, planItemId, documentId, input) {
+  assertOnline()
   return updateDoc(doc(db, 'trips', tripId, 'planItems', planItemId, 'documents', documentId), {
     ...cleanDocument(input),
     updatedAt: serverTimestamp(),
@@ -81,5 +84,6 @@ export function updatePlanDocument(tripId, planItemId, documentId, input) {
 }
 
 export function removePlanDocument(tripId, planItemId, documentId) {
+  assertOnline()
   return deleteDoc(doc(db, 'trips', tripId, 'planItems', planItemId, 'documents', documentId))
 }

@@ -10,6 +10,7 @@ import {
   where,
 } from 'firebase/firestore'
 import { db } from '../../../infrastructure/firebase/firestoreClient'
+import { assertOnline } from '../../../shared/offline/network'
 
 export function subscribeToPreparationItems(tripId, userId, callback, onError = console.error) {
   const itemsQuery = query(
@@ -25,6 +26,7 @@ export function subscribeToPreparationItems(tripId, userId, callback, onError = 
 }
 
 export function createPreparationItem({ tripId, text, category }, userId) {
+  assertOnline()
   return addDoc(collection(db, 'preparationItems'), {
     tripId,
     ownerId: userId,
@@ -36,9 +38,11 @@ export function createPreparationItem({ tripId, text, category }, userId) {
 }
 
 export function togglePreparationItem(item) {
+  assertOnline()
   return updateDoc(doc(db, 'preparationItems', item.id), { completed: !item.completed })
 }
 
 export function removePreparationItem(itemId) {
+  assertOnline()
   return deleteDoc(doc(db, 'preparationItems', itemId))
 }

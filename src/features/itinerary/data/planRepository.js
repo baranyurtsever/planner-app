@@ -13,6 +13,8 @@ import {
   writeBatch,
 } from 'firebase/firestore'
 import { db } from '../../../infrastructure/firebase/firestoreClient'
+import { cachePlansForOffline, getOfflinePlans } from '../../../shared/offline/offlineCache'
+import { assertOnline } from '../../../shared/offline/network'
 import {
   canDirectEditPlanItem,
   canProposePlanChange,
@@ -158,6 +160,10 @@ function activeProposals(proposals) {
 }
 
 export function subscribeToPlanItems(tripId, userId, callback, onError = console.error) {
+  if (navigator.onLine === false) {
+    callback(getOfflinePlans(userId, tripId))
+    return () => {}
+  }
   const visibleQuery = query(
     collection(db, 'trips', tripId, 'planItems'),
     where('visibility', 'in', ['trip', 'profile']),
@@ -173,23 +179,30 @@ export function subscribeToPlanItems(tripId, userId, callback, onError = console
     const uniqueItems = new Map(
       [...snapshots.visible, ...snapshots.private].map((item) => [item.id, item]),
     )
-    callback(
-      [...uniqueItems.values()].sort((left, right) =>
+    const sorted = [...uniqueItems.values()].sort((left, right) =>
         (left.time?.startsAt || left.time?.localDate || '').localeCompare(
           right.time?.startsAt || right.time?.localDate || '',
         ),
-      ),
-    )
+      )
+    cachePlansForOffline(tripId, userId, sorted)
+    callback(sorted)
+  }
+  const handleError = (error) => {
+    if (navigator.onLine === false) {
+      callback(getOfflinePlans(userId, tripId))
+      return
+    }
+    onError(error)
   }
   const unsubscribeVisible = onSnapshot(visibleQuery, (snapshot) => {
     snapshots.visible = decode(snapshot)
     void reconcilePublicPlanProjections(tripId, userId, snapshots.visible)
     publish()
-  }, onError)
+  }, handleError)
   const unsubscribePrivate = onSnapshot(privateOwnerQuery, (snapshot) => {
     snapshots.private = decode(snapshot)
     publish()
-  }, onError)
+  }, handleError)
   return () => {
     unsubscribeVisible()
     unsubscribePrivate()
@@ -213,6 +226,7 @@ export function subscribeToPublicPlanItems(tripId, callback, onError = console.e
 }
 
 export async function savePlanItem(trip, planItem, userId) {
+  assertOnline()
   const reference = planItem.id
     ? doc(db, 'trips', trip.id, 'planItems', planItem.id)
     : doc(collection(db, 'trips', trip.id, 'planItems'))
@@ -275,6 +289,7 @@ async function updatePlanContent(tripId, reference, patch, userId) {
 }
 
 export async function changePlanItem(trip, planItem, userId, patch) {
+  assertOnline()
   if (canDirectEditPlanItem(trip, planItem, userId)) {
     const reference = doc(db, 'trips', trip.id, 'planItems', planItem.id)
     const cleaned = cleanPlanItem({ ...planItem, ...patch }, userId)
@@ -297,6 +312,7 @@ export async function changePlanItem(trip, planItem, userId, patch) {
 }
 
 export async function removePlanItem(trip, planItem, userId) {
+  assertOnline()
   if (canDirectEditPlanItem(trip, planItem, userId)) {
     const batch = writeBatch(db)
     batch.delete(doc(db, 'trips', trip.id, 'planItems', planItem.id))
@@ -319,6 +335,7 @@ export async function removePlanItem(trip, planItem, userId) {
 }
 
 export async function approvePlanProposal(tripId, proposalId, ownerId) {
+  assertOnline()
   const proposalRef = doc(db, 'trips', tripId, 'planChangeProposals', proposalId)
   return runTransaction(db, async (transaction) => {
     const proposalSnapshot = await transaction.get(proposalRef)
@@ -364,6 +381,7 @@ export async function approvePlanProposal(tripId, proposalId, ownerId) {
 }
 
 export function rejectPlanProposal(tripId, proposalId, ownerId) {
+  assertOnline()
   return updateDoc(doc(db, 'trips', tripId, 'planChangeProposals', proposalId), {
     status: 'rejected',
     decidedBy: ownerId,
@@ -372,6 +390,7 @@ export function rejectPlanProposal(tripId, proposalId, ownerId) {
 }
 
 export function withdrawPlanProposal(tripId, proposalId, proposerId) {
+  assertOnline()
   return updateDoc(doc(db, 'trips', tripId, 'planChangeProposals', proposalId), {
     status: 'withdrawn',
     withdrawnBy: proposerId,

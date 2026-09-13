@@ -12,6 +12,7 @@ import {
   writeBatch,
 } from 'firebase/firestore'
 import { db } from '../../../infrastructure/firebase/firestoreClient'
+import { assertOnline } from '../../../shared/offline/network'
 
 function invitationReference(tripId, inviteeId) {
   return doc(db, 'tripInvitations', `${tripId}_${inviteeId}`)
@@ -22,6 +23,7 @@ function decode(snapshot) {
 }
 
 export async function sendTripInvitation(trip, inviterId, inviteeId, role) {
+  assertOnline()
   if (trip.ownerId !== inviterId) throw new Error('Yalnız Gezi Sahibi davet gönderebilir.')
   if (trip.memberIds.includes(inviteeId)) throw new Error('Bu kullanıcı zaten Gezi katılımcısı.')
   if (!['editor', 'viewer'].includes(role)) throw new Error('Geçersiz Gezi rolü.')
@@ -66,6 +68,7 @@ export function subscribeToTripInvitations(tripId, inviterId, callback, onError 
 }
 
 export async function acceptTripInvitation(invitation, userId) {
+  assertOnline()
   if (invitation.inviteeId !== userId) throw new Error('Bu daveti kabul etme yetkin yok.')
   const batch = writeBatch(db)
   batch.update(invitationReference(invitation.tripId, userId), {
@@ -81,6 +84,7 @@ export async function acceptTripInvitation(invitation, userId) {
 }
 
 export function rejectTripInvitation(invitation, userId) {
+  assertOnline()
   if (invitation.inviteeId !== userId) throw new Error('Bu daveti reddetme yetkin yok.')
   return updateDoc(invitationReference(invitation.tripId, userId), {
     status: 'rejected',
@@ -89,6 +93,7 @@ export function rejectTripInvitation(invitation, userId) {
 }
 
 export function cancelTripInvitation(invitation, userId) {
+  assertOnline()
   if (invitation.inviterId !== userId) throw new Error('Bu daveti iptal etme yetkin yok.')
   return updateDoc(invitationReference(invitation.tripId, invitation.inviteeId), {
     status: 'cancelled',
