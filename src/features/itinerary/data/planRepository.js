@@ -48,7 +48,7 @@ const CONTENT_FIELDS = new Set([
 
 export function changedPlanContentPatch(original, cleaned, userId) {
   return Object.fromEntries(
-    Object.entries(changedPlanPatch(original, cleaned, userId))
+    Object.entries(changedPlanPatch(original, cleanPlanItem(cleaned, userId), userId))
       .filter(([field]) => CONTENT_FIELDS.has(field)),
   )
 }

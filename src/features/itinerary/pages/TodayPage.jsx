@@ -7,6 +7,7 @@ import { PLAN_CATEGORY_MAP } from '../domain/planItem'
 import { formatPlanTime } from '../domain/planTime'
 import { buildTodayView } from '../domain/todayView'
 import { formatTravelDuration, TRAVEL_MODE_MAP } from '../domain/travel'
+import { PlaceDetails } from '../components/PlaceDetails'
 
 function PlanSummary({ item, prominent = false }) {
   const category = PLAN_CATEGORY_MAP[item.category] || PLAN_CATEGORY_MAP.other
@@ -18,13 +19,7 @@ function PlanSummary({ item, prominent = false }) {
         <span className="text-sm font-bold text-teal-700">{time.start}{time.end ? ` → ${time.end}` : ''}</span>
       </div>
       <h3 className="mt-3 text-xl font-black">{item.title}</h3>
-      {item.location?.name && (
-        <p className="mt-2 text-sm font-semibold text-slate-600">
-          📍 {item.location.mapUrl
-            ? <a href={item.location.mapUrl} target="_blank" rel="noreferrer" className="text-teal-700 underline">{item.location.name}</a>
-            : item.location.name}
-        </p>
-      )}
+      <div className="mt-2"><PlaceDetails location={item.location} compact /></div>
       {item.travelFromPrevious?.durationMinutes > 0 && (
         <p className="mt-2 text-sm font-bold text-sky-800">
           {TRAVEL_MODE_MAP[item.travelFromPrevious.mode]?.icon || '➜'} Önceki plandan {formatTravelDuration(item.travelFromPrevious.durationMinutes)}

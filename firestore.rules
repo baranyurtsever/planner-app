@@ -157,6 +157,23 @@ service cloud.firestore {
         );
     }
 
+    function validPlanLocation(location) {
+      return location is map &&
+        location.keys().hasOnly([
+          'name', 'address', 'mapUrl', 'lat', 'lng',
+          'website', 'phone', 'openingHours', 'category'
+        ]) &&
+        location.name is string &&
+        location.mapUrl is string &&
+        (!('address' in location) || location.address is string) &&
+        (!('website' in location) || location.website is string) &&
+        (!('phone' in location) || location.phone is string) &&
+        (!('openingHours' in location) || location.openingHours is string) &&
+        (!('category' in location) || location.category is string) &&
+        (!('lat' in location) || location.lat == null || location.lat is number) &&
+        (!('lng' in location) || location.lng == null || location.lng is number);
+    }
+
     function isSharedPlanItem(planData) {
       return !('scope' in planData) || planData.scope == 'shared';
     }
@@ -275,7 +292,7 @@ service cloud.firestore {
         (!('status' in patch) || patch.status in ['todo', 'done', 'postponed', 'cancelled']) &&
         (!('visibility' in patch) || patch.visibility in ['trip', 'profile']) &&
         (!('notes' in patch) || patch.notes is string) &&
-        (!('location' in patch) || patch.location is map) &&
+        (!('location' in patch) || validPlanLocation(patch.location)) &&
         (!('travelFromPrevious' in patch) || validTravelFromPrevious(patch.travelFromPrevious)) &&
         (!('time' in patch) || validPlanTime(patch.time));
     }

@@ -9,7 +9,7 @@ Plan ile yolculuk sırasında karşılaşılan gerçek dünya koşulları arası
 ## Uygulama sırası
 
 - [x] [01 — Ulaşım süresi ve çakışma uyarıları](issues/01-travel-time-warnings.md)
-- [ ] 02 — Yer arama ve zengin yer kartları
+- [x] [02 — Yer arama ve zengin yer kartları](issues/02-place-search.md)
 - [ ] 03 — Çoklu para birimi ve kişi bazlı hesap kapatma
 - [ ] 04 — Öneri oylaması ve karar kaydı
 

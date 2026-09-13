@@ -122,6 +122,7 @@ export function PlanPage() {
                 </p>
                 {item.notes && <p className="mt-3 text-sm text-slate-600">{item.notes}</p>}
                 {item.location?.name && <p className="mt-2 text-sm font-semibold text-teal-700">📍 {item.location.name}</p>}
+                {item.location?.address && item.location.address !== item.location.name && <p className="mt-1 text-xs text-slate-500">{item.location.address}</p>}
               </button>
               <div className="flex shrink-0 gap-3 md:flex-col md:items-end">
                 <button onClick={() => openItem(item)} className="text-sm font-bold text-teal-700">

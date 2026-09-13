@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { ErrorMessage, LoadingScreen } from '../../../shared/components/Feedback'
 import { formatPlanTime } from '../../itinerary/domain/planTime'
+import { PlaceDetails } from '../../itinerary/components/PlaceDetails'
 import { subscribeToPublicTripExpenses } from '../../expenses/data/expenseRepository'
 import { getProfileByUsername, getPublicTripForProfile } from '../data/profileRepository'
 import { getPublicTrip } from '../../trips/data/tripRepository'
@@ -64,6 +65,7 @@ export function PublicTripPage() {
                 <article key={item.id} className="rounded-2xl border border-slate-200 bg-white p-5">
                   <h3 className="font-black">{item.title}</h3>
                   <p className="mt-1 text-sm text-slate-500">{time.start}{time.end ? ` → ${time.end}` : ''}</p>
+                  <div className="mt-3"><PlaceDetails location={item.location} compact /></div>
                 </article>
               )
             })}

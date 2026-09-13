@@ -11,6 +11,8 @@ npm run dev
 
 Copy `.env.example` to `.env.local` when using a Firebase project other than the configured development project.
 
+Place search uses the user-triggered OpenStreetMap Nominatim search endpoint. It does not implement autocomplete, limits requests to one per second, caches repeated queries, and displays attribution. Set `VITE_GEOCODING_BASE_URL` to switch to a compatible proxy or provider endpoint before traffic exceeds the public service policy.
+
 ## Verification
 
 ```bash

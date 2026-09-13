@@ -1,4 +1,5 @@
 import { normalizeTravelFromPrevious } from './travel'
+import { normalizePlanLocation } from './place'
 
 export const PLAN_SCOPES = Object.freeze({
   SHARED: 'shared',
@@ -36,11 +37,6 @@ export function normalizedPlanScope(item) {
 
 export function normalizePlanItemForWrite(planItem, userId) {
   const scope = normalizedPlanScope(planItem)
-  const lat = Number(planItem.locationLat ?? planItem.location?.lat)
-  const lng = Number(planItem.locationLng ?? planItem.location?.lng)
-  const hasCoordinates =
-    (planItem.locationLat ?? planItem.location?.lat ?? '') !== '' &&
-    (planItem.locationLng ?? planItem.location?.lng ?? '') !== ''
 
   return {
     scope,
@@ -52,12 +48,7 @@ export function normalizePlanItemForWrite(planItem, userId) {
       ? (planItem.visibility || 'private')
       : (planItem.visibility === 'profile' ? 'profile' : 'trip'),
     notes: planItem.notes?.trim() || '',
-    location: {
-      name: (planItem.locationName ?? planItem.location?.name ?? '').trim(),
-      mapUrl: (planItem.mapUrl ?? planItem.location?.mapUrl ?? '').trim(),
-      lat: hasCoordinates && Number.isFinite(lat) ? lat : null,
-      lng: hasCoordinates && Number.isFinite(lng) ? lng : null,
-    },
+    location: normalizePlanLocation(planItem),
     travelFromPrevious: normalizeTravelFromPrevious(planItem.travelFromPrevious),
     time: planItem.time,
     participantMode: scope === PLAN_SCOPES.SHARED ? 'all' : 'selected',

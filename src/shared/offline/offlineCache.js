@@ -47,7 +47,17 @@ export function cachePlansForOffline(tripId, userId, items) {
     ownerId: item.ownerId === userId ? userId : null,
     participantIds: item.scope === 'personal' && item.participantIds?.includes(userId) ? [userId] : [],
     excludedParticipantIds: item.scope !== 'personal' && item.excludedParticipantIds?.includes(userId) ? [userId] : [],
-    location: { name: item.location?.name || '', mapUrl: item.location?.mapUrl || '' },
+    location: {
+      name: item.location?.name || '',
+      address: item.location?.address || '',
+      mapUrl: item.location?.mapUrl || '',
+      lat: item.location?.lat ?? null,
+      lng: item.location?.lng ?? null,
+      website: item.location?.website || '',
+      phone: item.location?.phone || '',
+      openingHours: item.location?.openingHours || '',
+      category: item.location?.category || '',
+    },
     travelFromPrevious: item.travelFromPrevious || { mode: 'none', durationMinutes: 0 },
     time: item.time,
   }))

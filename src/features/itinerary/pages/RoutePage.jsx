@@ -8,6 +8,7 @@ import { planItemDate } from '../domain/calendar'
 import { formatPlanTime } from '../domain/planTime'
 import { hasValidCoordinates } from '../domain/coordinates'
 import { formatTravelDuration, TRAVEL_MODE_MAP } from '../domain/travel'
+import { PlaceDetails } from '../components/PlaceDetails'
 
 export function RoutePage() {
   const { trip, user } = useOutletContext()
@@ -67,8 +68,9 @@ export function RoutePage() {
                   <div>
                     <h3 className="font-black">{item.title}</h3>
                     <p className="mt-1 text-sm text-slate-500">{display.start}</p>
-                    <p className="mt-1 text-sm font-semibold text-teal-700">{item.location?.name || 'Konum eklenmedi'}</p>
-                    {item.location?.mapUrl && <a href={item.location.mapUrl} target="_blank" rel="noreferrer" className="mt-2 inline-block text-xs font-bold text-teal-700">Haritada aç ↗</a>}
+                    {item.location?.name || item.location?.address
+                      ? <div className="mt-2"><PlaceDetails location={item.location} compact /></div>
+                      : <p className="mt-1 text-sm text-slate-500">Konum eklenmedi</p>}
                   </div>
                 </div>
               </article>

@@ -66,6 +66,8 @@ export function CalendarCard({ item, layout, travelWarning = null, ghost = false
         {item.travelFromPrevious?.durationMinutes > 0 && <p className="mt-1">{TRAVEL_MODE_MAP[item.travelFromPrevious.mode]?.icon || '➜'} Önceki duraktan {formatTravelDuration(item.travelFromPrevious.durationMinutes)}</p>}
         {travelWarning && <p className="mt-1 font-bold text-amber-300">Yetişmek için {formatTravelDuration(travelWarning.shortageMinutes)} daha gerekiyor.</p>}
         {item.location?.name && <p>{item.location.name}</p>}
+        {item.location?.address && item.location.address !== item.location.name && <p className="text-slate-300">{item.location.address}</p>}
+        {item.location?.openingHours && <p className="text-slate-300">🕒 {item.location.openingHours}</p>}
         {item.notes && <p className="mt-1 text-slate-200">{item.notes}</p>}
       </aside>
       {editable && <span data-resize-edge="end" className="absolute inset-x-0 bottom-0 h-2 cursor-ns-resize" />}

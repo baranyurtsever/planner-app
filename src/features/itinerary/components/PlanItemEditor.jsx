@@ -14,6 +14,7 @@ import { downloadIcsCalendar } from '../domain/icsCalendar'
 import { savePlanItem } from '../data/planRepository'
 import { PlanParticipationSection } from './PlanParticipationSection'
 import { PlanDocumentsSection } from './PlanDocumentsSection'
+import { PlaceSearchField } from './PlaceSearchField'
 
 const localTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone
 
@@ -48,9 +49,14 @@ function initialForm(item, initialSlot, userId, defaultTimeZone = localTimeZone)
       startTimeZone: dateOnly ? localTimeZone : item.time.startTimeZone,
       endTimeZone: dateOnly ? localTimeZone : item.time.endTimeZone,
       locationName: item.location?.name || '',
+      locationAddress: item.location?.address || '',
       locationLat: item.location?.lat ?? '',
       locationLng: item.location?.lng ?? '',
       mapUrl: item.location?.mapUrl || '',
+      locationWebsite: item.location?.website || '',
+      locationPhone: item.location?.phone || '',
+      locationOpeningHours: item.location?.openingHours || '',
+      locationCategory: item.location?.category || '',
       travelMode: item.travelFromPrevious?.mode || 'none',
       travelDurationMinutes: item.travelFromPrevious?.durationMinutes || 0,
       participantIds: item.participantIds || [],
@@ -76,9 +82,14 @@ function initialForm(item, initialSlot, userId, defaultTimeZone = localTimeZone)
     startTimeZone: defaultTimeZone,
     endTimeZone: defaultTimeZone,
     locationName: '',
+    locationAddress: '',
     locationLat: '',
     locationLng: '',
     mapUrl: '',
+    locationWebsite: '',
+    locationPhone: '',
+    locationOpeningHours: '',
+    locationCategory: '',
     travelMode: 'none',
     travelDurationMinutes: 0,
     participantIds: [userId],
@@ -265,7 +276,7 @@ export function PlanItemEditor({
               <label className="text-sm font-semibold text-slate-600">Bitiş saat dilimi<select required aria-label="Bitiş saat dilimi" value={form.endTimeZone} onChange={(event) => setForm({ ...form, endTimeZone: event.target.value })} className="mt-1 w-full rounded-xl border border-slate-200 px-4 py-3">{endTimeZoneOptions.map((timeZone) => <option key={timeZone.value} value={timeZone.value}>{timeZone.label}</option>)}</select></label>
             </>
           )}
-          <label className="text-sm font-semibold text-slate-600">
+          <label className="text-sm font-semibold text-slate-600 md:col-span-2">
             Görünürlük
             <select value={form.visibility} onChange={(event) => setForm({ ...form, visibility: event.target.value })} className="mt-1 w-full rounded-xl border border-slate-200 px-4 py-3">
               {form.scope === PLAN_SCOPES.PERSONAL && <option value="private">Yalnızca ben</option>}
@@ -273,8 +284,28 @@ export function PlanItemEditor({
               <option value="profile">Profilde herkese açık</option>
             </select>
           </label>
+          <PlaceSearchField
+            disabled={effectiveReadOnly || saving}
+            initialQuery={form.locationName}
+            onSelect={(place) => setForm({
+              ...form,
+              locationName: place.name,
+              locationAddress: place.address,
+              locationLat: place.lat ?? '',
+              locationLng: place.lng ?? '',
+              mapUrl: place.mapUrl,
+              locationWebsite: place.website,
+              locationPhone: place.phone,
+              locationOpeningHours: place.openingHours,
+              locationCategory: place.category,
+            })}
+          />
           <label className="text-sm font-semibold text-slate-600">Konum adı<input value={form.locationName} onChange={(event) => setForm({ ...form, locationName: event.target.value })} className="mt-1 w-full rounded-xl border border-slate-200 px-4 py-3" /></label>
+          <label className="text-sm font-semibold text-slate-600">Açık adres<input value={form.locationAddress} onChange={(event) => setForm({ ...form, locationAddress: event.target.value })} className="mt-1 w-full rounded-xl border border-slate-200 px-4 py-3" /></label>
           <label className="text-sm font-semibold text-slate-600">Harita bağlantısı<input type="url" value={form.mapUrl} onChange={(event) => setForm({ ...form, mapUrl: event.target.value })} className="mt-1 w-full rounded-xl border border-slate-200 px-4 py-3" /></label>
+          <label className="text-sm font-semibold text-slate-600">Web sitesi<input type="url" value={form.locationWebsite} onChange={(event) => setForm({ ...form, locationWebsite: event.target.value })} className="mt-1 w-full rounded-xl border border-slate-200 px-4 py-3" /></label>
+          <label className="text-sm font-semibold text-slate-600">Telefon<input type="tel" value={form.locationPhone} onChange={(event) => setForm({ ...form, locationPhone: event.target.value })} className="mt-1 w-full rounded-xl border border-slate-200 px-4 py-3" /></label>
+          <label className="text-sm font-semibold text-slate-600">Çalışma saatleri<input value={form.locationOpeningHours} onChange={(event) => setForm({ ...form, locationOpeningHours: event.target.value })} className="mt-1 w-full rounded-xl border border-slate-200 px-4 py-3" /></label>
           <div className="grid grid-cols-2 gap-3">
             <label className="text-sm font-semibold text-slate-600">Enlem<input type="number" step="any" value={form.locationLat} onChange={(event) => setForm({ ...form, locationLat: event.target.value })} className="mt-1 w-full rounded-xl border border-slate-200 px-4 py-3" /></label>
             <label className="text-sm font-semibold text-slate-600">Boylam<input type="number" step="any" value={form.locationLng} onChange={(event) => setForm({ ...form, locationLng: event.target.value })} className="mt-1 w-full rounded-xl border border-slate-200 px-4 py-3" /></label>
