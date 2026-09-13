@@ -6,6 +6,7 @@ import { EmptyState, ErrorMessage } from '../../../shared/components/Feedback'
 import { subscribeToPlanItems } from '../data/planRepository'
 import { planItemDate } from '../domain/calendar'
 import { formatPlanTime } from '../domain/planTime'
+import { hasValidCoordinates } from '../domain/coordinates'
 
 export function RoutePage() {
   const { trip, user } = useOutletContext()
@@ -22,9 +23,7 @@ export function RoutePage() {
     () => items.filter((item) => !selectedDate || planItemDate(item) === selectedDate),
     [items, selectedDate],
   )
-  const stops = datedItems.filter((item) =>
-    Number.isFinite(Number(item.location?.lat)) && Number.isFinite(Number(item.location?.lng)),
-  )
+  const stops = datedItems.filter((item) => hasValidCoordinates(item.location))
   const positions = stops.map((item) => [Number(item.location.lat), Number(item.location.lng)])
   const center = positions[0] || [41.0082, 28.9784]
   const dates = Array.from(new Set(items.map(planItemDate))).sort()
