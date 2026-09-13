@@ -807,6 +807,70 @@ describe('plan participation', () => {
   })
 })
 
+describe('plan document privacy', () => {
+  const privateDocument = {
+    planItemId: 'shared-plan',
+    ownerId: 'owner',
+    title: 'Otel rezervasyonu',
+    kind: 'reservation',
+    url: 'https://example.test/booking',
+    reservationCode: 'ABC-123',
+    visibility: 'private',
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  }
+
+  it('keeps a document private until its owner shares it with trip participants', async () => {
+    const ownerDb = testEnvironment.authenticatedContext('owner').firestore()
+    const editorDb = testEnvironment.authenticatedContext('editor').firestore()
+    const publicDb = testEnvironment.unauthenticatedContext().firestore()
+    const ownerRef = doc(ownerDb, 'trips', 'public-trip', 'planItems', 'shared-plan', 'documents', 'booking')
+
+    await assertSucceeds(setDoc(ownerRef, privateDocument))
+    await assertSucceeds(getDocs(query(
+      collection(ownerDb, 'trips', 'public-trip', 'planItems', 'shared-plan', 'documents'),
+      where('ownerId', '==', 'owner'),
+    )))
+    await assertFails(getDoc(doc(editorDb, 'trips', 'public-trip', 'planItems', 'shared-plan', 'documents', 'booking')))
+    await assertFails(getDoc(doc(publicDb, 'trips', 'public-trip', 'planItems', 'shared-plan', 'documents', 'booking')))
+
+    await assertSucceeds(updateDoc(ownerRef, { visibility: 'trip' }))
+    await assertSucceeds(getDoc(doc(editorDb, 'trips', 'public-trip', 'planItems', 'shared-plan', 'documents', 'booking')))
+    await assertSucceeds(getDocs(query(
+      collection(editorDb, 'trips', 'public-trip', 'planItems', 'shared-plan', 'documents'),
+      where('visibility', '==', 'trip'),
+    )))
+    await assertFails(getDoc(doc(publicDb, 'trips', 'public-trip', 'planItems', 'shared-plan', 'documents', 'booking')))
+  })
+
+  it('preserves document ownership independently from the trip role', async () => {
+    const viewerDb = testEnvironment.authenticatedContext('viewer').firestore()
+    const editorDb = testEnvironment.authenticatedContext('editor').firestore()
+    const viewerRef = doc(viewerDb, 'trips', 'public-trip', 'planItems', 'shared-plan', 'documents', 'viewer-ticket')
+    const documentData = {
+      ...privateDocument,
+      ownerId: 'viewer',
+      title: 'Müze bileti',
+      kind: 'ticket',
+      visibility: 'trip',
+    }
+
+    await assertSucceeds(setDoc(viewerRef, documentData))
+    await assertFails(updateDoc(
+      doc(editorDb, 'trips', 'public-trip', 'planItems', 'shared-plan', 'documents', 'viewer-ticket'),
+      { reservationCode: 'CHANGED' },
+    ))
+    await assertFails(setDoc(
+      doc(viewerDb, 'trips', 'public-trip', 'planItems', 'shared-plan', 'documents', 'forged'),
+      { ...documentData, ownerId: 'owner' },
+    ))
+    await assertFails(setDoc(
+      doc(viewerDb, 'trips', 'public-trip', 'planItems', 'private-personal-plan', 'documents', 'hidden'),
+      { ...documentData, planItemId: 'private-personal-plan' },
+    ))
+  })
+})
+
 describe('friendship integrity', () => {
   it('only creates a friendship for the two users in the pending request', async () => {
     const db = testEnvironment.authenticatedContext('viewer').firestore()

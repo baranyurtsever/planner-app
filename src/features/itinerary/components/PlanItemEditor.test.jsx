@@ -9,6 +9,7 @@ const mocks = vi.hoisted(() => ({
   savePlanItem: vi.fn(),
   saveOwnPlanDetails: vi.fn(),
   getProfileById: vi.fn(),
+  createPlanDocument: vi.fn(),
 }))
 
 vi.mock('../../profile/data/profileRepository', () => ({
@@ -18,6 +19,16 @@ vi.mock('../../profile/data/profileRepository', () => ({
 
 vi.mock('../data/planRepository', () => ({
   savePlanItem: mocks.savePlanItem,
+}))
+
+vi.mock('../data/planDocumentRepository', () => ({
+  createPlanDocument: mocks.createPlanDocument,
+  removePlanDocument: vi.fn(),
+  updatePlanDocument: vi.fn(),
+  subscribeToPlanDocuments: (_tripId, _itemId, _userId, callback) => {
+    callback([])
+    return vi.fn()
+  },
 }))
 
 vi.mock('../data/planParticipationRepository', () => ({
@@ -97,6 +108,22 @@ describe('PlanItemEditor form boundaries', () => {
     expect(container.querySelectorAll('form form')).toHaveLength(0)
     expect(await screen.findByText('Ada Lovelace')).toBeInTheDocument()
     expect(screen.queryByText('owner')).not.toBeInTheDocument()
+  })
+
+  it('adds a private reservation without submitting the plan item form', async () => {
+    render(<PlanItemEditor trip={trip} item={item} user={{ uid: 'owner' }} onClose={vi.fn()} />)
+
+    fireEvent.change(screen.getByLabelText('Belge başlığı'), { target: { value: 'Otel onayı' } })
+    fireEvent.change(screen.getByLabelText('Rezervasyon numarası'), { target: { value: 'ABC-123' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Belge ekle' }))
+
+    await waitFor(() => expect(mocks.createPlanDocument).toHaveBeenCalledWith(
+      'trip',
+      'plan',
+      'owner',
+      expect.objectContaining({ title: 'Otel onayı', reservationCode: 'ABC-123', visibility: 'private' }),
+    ))
+    expect(mocks.savePlanItem).not.toHaveBeenCalled()
   })
 
   it('rolls a late initial slot end into the next day and allows any minute', () => {

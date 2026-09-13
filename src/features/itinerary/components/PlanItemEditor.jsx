@@ -11,6 +11,7 @@ import { PLAN_CATEGORIES, PLAN_SCOPES, PLAN_STATUSES } from '../domain/planItem'
 import { createTimeZoneOptions } from '../domain/timeZones'
 import { savePlanItem } from '../data/planRepository'
 import { PlanParticipationSection } from './PlanParticipationSection'
+import { PlanDocumentsSection } from './PlanDocumentsSection'
 
 const localTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone
 
@@ -253,6 +254,7 @@ export function PlanItemEditor({
 
           <div className="px-6"><ErrorMessage message={error} /></div>
         </form>
+        {item && <PlanDocumentsSection trip={trip} item={liveItem || item} user={user} />}
         {item && <PlanParticipationSection trip={trip} item={liveItem || item} user={user} />}
         <footer className="sticky bottom-0 flex justify-end gap-3 border-t border-slate-100 bg-white/95 px-6 py-4 backdrop-blur">
           <button type="button" onClick={onClose} className="rounded-xl border border-slate-200 px-5 py-3 font-bold">Kapat</button>

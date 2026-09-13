@@ -92,6 +92,13 @@ test('owner, editor and viewer complete proposal, drag, resize, join and leave f
   await expect(viewer.page.getByRole('heading', { name: 'Viewer kişisel planı' })).toBeVisible()
 
   await createPlan(owner.page, { title: 'Sürüklenecek ortak plan', scope: 'shared' })
+  await owner.page.getByRole('heading', { name: 'Sürüklenecek ortak plan' }).click()
+  await owner.page.getByLabel('Belge başlığı').fill('Uçuş rezervasyonu')
+  await owner.page.getByLabel('Rezervasyon numarası').fill('E2E-ABC-123')
+  await owner.page.getByLabel('Belge görünürlüğü').selectOption('trip')
+  await owner.page.getByRole('button', { name: 'Belge ekle' }).click()
+  await expect(owner.page.getByText('E2E-ABC-123', { exact: true })).toBeVisible()
+  await owner.page.getByRole('button', { name: 'Kapat' }).click()
   const movable = owner.page.locator('article[title^="Sürüklenecek ortak plan"]')
   const board = owner.page.getByTestId('calendar-time-board')
   await expect(movable).toBeVisible()

@@ -173,6 +173,39 @@ service cloud.firestore {
         );
     }
 
+    function canViewPlanSource(tripId, planItemId) {
+      let source = planItem(tripId, planItemId);
+      return exists(/databases/$(database)/documents/trips/$(tripId)/planItems/$(planItemId)) &&
+        (
+          (isPersonalPlanItem(source) && source.visibility == 'private' && source.ownerId == request.auth.uid) ||
+          (source.visibility in ['trip', 'profile'] && isParticipant(trip(tripId)))
+        );
+    }
+
+    function validPlanDocument(planItemId, documentData) {
+      return documentData.keys().hasOnly([
+          'planItemId',
+          'ownerId',
+          'title',
+          'kind',
+          'url',
+          'reservationCode',
+          'visibility',
+          'createdAt',
+          'updatedAt'
+        ]) &&
+        documentData.planItemId == planItemId &&
+        documentData.ownerId is string &&
+        documentData.title is string &&
+        documentData.title.size() > 0 &&
+        documentData.kind in ['ticket', 'reservation', 'qr', 'pdf', 'link'] &&
+        documentData.url is string &&
+        documentData.reservationCode is string &&
+        documentData.visibility in ['private', 'trip'] &&
+        documentData.createdAt is timestamp &&
+        documentData.updatedAt is timestamp;
+    }
+
     function validPersonalMembership(tripData, planData) {
       return !isPersonalPlanItem(planData) ||
         (
@@ -499,6 +532,27 @@ service cloud.firestore {
             (isSharedPlanItem(resource.data) && isOwner(trip(tripId))) ||
             (isPersonalPlanItem(resource.data) && resource.data.ownerId == request.auth.uid)
           );
+      }
+
+      match /planItems/{planItemId}/documents/{documentId} {
+        allow read: if signedIn() && canViewPlanSource(tripId, planItemId) &&
+          (
+            resource.data.ownerId == request.auth.uid ||
+            (resource.data.visibility == 'trip' && isParticipant(trip(tripId)))
+          );
+        allow create: if isActiveTrip(tripId) &&
+          isParticipant(trip(tripId)) &&
+          canViewPlanSource(tripId, planItemId) &&
+          validPlanDocument(planItemId, request.resource.data) &&
+          request.resource.data.ownerId == request.auth.uid;
+        allow update: if isActiveTrip(tripId) &&
+          resource.data.ownerId == request.auth.uid &&
+          request.resource.data.ownerId == resource.data.ownerId &&
+          request.resource.data.planItemId == resource.data.planItemId &&
+          request.resource.data.createdAt == resource.data.createdAt &&
+          validPlanDocument(planItemId, request.resource.data);
+        allow delete: if isActiveTrip(tripId) &&
+          resource.data.ownerId == request.auth.uid;
       }
 
       match /publicPlanItems/{planItemId} {
