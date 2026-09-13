@@ -12,6 +12,7 @@ import { ProposalPanel } from '../components/ProposalPanel'
 import {
   changePlanItem,
   subscribeToPlanItems,
+  subscribeToPlanProposalDecisions,
   subscribeToPlanProposals,
 } from '../data/planRepository'
 import {
@@ -52,6 +53,7 @@ export function CalendarPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const [items, setItems] = useState([])
   const [proposals, setProposals] = useState([])
+  const [decisions, setDecisions] = useState([])
   const [editor, setEditor] = useState(null)
   const [interaction, setInteraction] = useState(null)
   const [notice, setNotice] = useState('')
@@ -78,6 +80,14 @@ export function CalendarPage() {
       (nextError) => setError(nextError.message),
     ),
     [trip.id, user.uid],
+  )
+  useEffect(
+    () => subscribeToPlanProposalDecisions(
+      trip.id,
+      setDecisions,
+      (nextError) => setError(nextError.message),
+    ),
+    [trip.id],
   )
   useEffect(
     () => subscribeToPlanProposals(
@@ -393,7 +403,7 @@ export function CalendarPage() {
           </ul>
         </div>
       )}
-      <ProposalPanel trip={trip} user={user} proposals={proposals} items={items} />
+      <ProposalPanel trip={trip} user={user} proposals={proposals} decisions={decisions} items={items} />
 
       <CalendarScrollFrame
         scrollRef={scrollRef}

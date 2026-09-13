@@ -380,6 +380,44 @@ service cloud.firestore {
         );
     }
 
+    function validProposalVotes(proposalData, tripData) {
+      return !('votes' in proposalData) ||
+        (
+          proposalData.votes is map &&
+          proposalData.votes.keys().hasOnly(tripData.memberIds) &&
+          proposalData.votes.values().hasOnly(['support', 'oppose'])
+        );
+    }
+
+    function changesOnlyOwnProposalVote(beforeData, afterData, userId) {
+      let beforeVotes = 'votes' in beforeData ? beforeData.votes : {};
+      return 'votes' in afterData &&
+        afterData.votes.diff(beforeVotes).affectedKeys().hasOnly([userId]);
+    }
+
+    function validProposalDecision(decisionData) {
+      return decisionData.keys().hasOnly([
+          'proposalId',
+          'targetItemId',
+          'proposerId',
+          'action',
+          'patch',
+          'votes',
+          'outcome',
+          'decidedBy',
+          'decidedAt'
+        ]) &&
+        decisionData.proposalId is string &&
+        decisionData.targetItemId is string &&
+        decisionData.proposerId is string &&
+        decisionData.action in ['create', 'update', 'delete'] &&
+        decisionData.patch is map &&
+        decisionData.votes is map &&
+        decisionData.votes.values().hasOnly(['support', 'oppose']) &&
+        decisionData.outcome in ['approved', 'rejected'] &&
+        decisionData.decidedBy == request.auth.uid;
+    }
+
     function validTripMembership(tripData) {
       return tripData.memberIds is list &&
         tripData.memberRoles is map &&
@@ -738,9 +776,21 @@ service cloud.firestore {
           isEditor(trip(tripId)) &&
           request.resource.data.proposerId == request.auth.uid &&
           request.resource.data.status == 'pending' &&
+          validProposalVotes(request.resource.data, trip(tripId)) &&
           validProposalAction(tripId, request.resource.data);
         allow update: if isActiveTrip(tripId) &&
           (
+            (
+              isParticipant(trip(tripId)) &&
+              resource.data.status == 'pending' &&
+              request.resource.data.status == 'pending' &&
+              validProposalVotes(request.resource.data, trip(tripId)) &&
+              changesOnlyOwnProposalVote(resource.data, request.resource.data, request.auth.uid) &&
+              request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+                'votes',
+                'updatedAt'
+              ])
+            ) ||
             (
               isOwner(trip(tripId)) &&
               resource.data.status == 'pending' &&
@@ -766,9 +816,14 @@ service cloud.firestore {
                   resource.data.status == 'pending' &&
                   request.resource.data.status == 'pending' &&
                   validProposalAction(tripId, request.resource.data) &&
+                  (
+                    !request.resource.data.diff(resource.data).affectedKeys().hasAny(['votes']) ||
+                    request.resource.data.diff(resource.data).affectedKeys().hasAny(['action', 'patch'])
+                  ) &&
                   request.resource.data.diff(resource.data).affectedKeys().hasOnly([
                     'action',
                     'patch',
+                    'votes',
                     'updatedAt'
                   ])
                 ) ||
@@ -791,13 +846,25 @@ service cloud.firestore {
                     'action',
                     'patch',
                     'status',
-                    'updatedAt'
+                    'votes',
+                    'updatedAt',
+                    'decidedBy',
+                    'decidedAt',
+                    'withdrawnBy'
                   ])
                 )
               )
             )
           );
         allow delete: if false;
+      }
+
+      match /planProposalDecisions/{decisionId} {
+        allow read: if isParticipant(trip(tripId));
+        allow create: if isActiveTrip(tripId) &&
+          isOwner(trip(tripId)) &&
+          validProposalDecision(request.resource.data);
+        allow update, delete: if false;
       }
 
       match /planParticipationRequests/{participationRequestId} {

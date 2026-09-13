@@ -34,6 +34,10 @@ vi.mock('../data/planRepository', () => ({
     callback(mocks.proposals)
     return vi.fn()
   },
+  subscribeToPlanProposalDecisions: (_tripId, callback) => {
+    callback([])
+    return vi.fn()
+  },
 }))
 
 vi.mock('../components/PlanItemEditor', () => ({

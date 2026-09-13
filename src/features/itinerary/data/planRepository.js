@@ -136,17 +136,16 @@ async function saveProposal({ tripId, proposerId, targetItemId, action, patch })
     action,
     patch,
     status: 'pending',
+    votes: {},
+    createdAt: existing.exists() ? existing.data().createdAt || serverTimestamp() : serverTimestamp(),
     updatedAt: serverTimestamp(),
   }
-  if (!existing.exists()) {
-    nextProposal.createdAt = serverTimestamp()
-  }
-  await setDoc(stableReference, nextProposal, { merge: true })
+  await setDoc(stableReference, nextProposal)
   return { kind: 'proposal', id: stableReference.id, targetItemId }
 }
 
 function proposalTimestamp(proposal) {
-  return proposal.updatedAt?.toMillis?.() || proposal.createdAt?.toMillis?.() || 0
+  return proposal.decidedAt?.toMillis?.() || proposal.updatedAt?.toMillis?.() || proposal.createdAt?.toMillis?.() || 0
 }
 
 function activeProposals(proposals) {
@@ -215,6 +214,23 @@ export function subscribeToPlanProposals(tripId, callback, onError = console.err
     (snapshot) => callback(activeProposals(decode(snapshot))),
     onError,
   )
+}
+
+export function subscribeToPlanProposalDecisions(tripId, callback, onError = console.error) {
+  return onSnapshot(
+    collection(db, 'trips', tripId, 'planProposalDecisions'),
+    (snapshot) => callback(decode(snapshot).sort((left, right) => proposalTimestamp(right) - proposalTimestamp(left))),
+    onError,
+  )
+}
+
+export function voteOnPlanProposal(tripId, proposalId, userId, vote) {
+  assertOnline()
+  if (!['support', 'oppose'].includes(vote)) throw new Error('Geçersiz öneri oyu.')
+  return updateDoc(doc(db, 'trips', tripId, 'planChangeProposals', proposalId), {
+    [`votes.${userId}`]: vote,
+    updatedAt: serverTimestamp(),
+  })
 }
 
 export function subscribeToPublicPlanItems(tripId, callback, onError = console.error) {
@@ -337,6 +353,7 @@ export async function removePlanItem(trip, planItem, userId) {
 export async function approvePlanProposal(tripId, proposalId, ownerId) {
   assertOnline()
   const proposalRef = doc(db, 'trips', tripId, 'planChangeProposals', proposalId)
+  const decisionRef = doc(collection(db, 'trips', tripId, 'planProposalDecisions'))
   return runTransaction(db, async (transaction) => {
     const proposalSnapshot = await transaction.get(proposalRef)
     if (!proposalSnapshot.exists()) throw new Error('Öneri bulunamadı.')
@@ -377,15 +394,44 @@ export async function approvePlanProposal(tripId, proposalId, ownerId) {
       decidedBy: ownerId,
       decidedAt: serverTimestamp(),
     })
+    transaction.set(decisionRef, {
+      proposalId,
+      targetItemId: proposal.targetItemId,
+      proposerId: proposal.proposerId,
+      action: proposal.action,
+      patch: proposal.patch,
+      votes: proposal.votes || {},
+      outcome: 'approved',
+      decidedBy: ownerId,
+      decidedAt: serverTimestamp(),
+    })
   })
 }
 
-export function rejectPlanProposal(tripId, proposalId, ownerId) {
+export async function rejectPlanProposal(tripId, proposalId, ownerId) {
   assertOnline()
-  return updateDoc(doc(db, 'trips', tripId, 'planChangeProposals', proposalId), {
-    status: 'rejected',
-    decidedBy: ownerId,
-    decidedAt: serverTimestamp(),
+  const proposalRef = doc(db, 'trips', tripId, 'planChangeProposals', proposalId)
+  const decisionRef = doc(collection(db, 'trips', tripId, 'planProposalDecisions'))
+  return runTransaction(db, async (transaction) => {
+    const snapshot = await transaction.get(proposalRef)
+    if (!snapshot.exists() || snapshot.data().status !== 'pending') throw new Error('Öneri artık beklemede değil.')
+    const proposal = snapshot.data()
+    transaction.update(proposalRef, {
+      status: 'rejected',
+      decidedBy: ownerId,
+      decidedAt: serverTimestamp(),
+    })
+    transaction.set(decisionRef, {
+      proposalId,
+      targetItemId: proposal.targetItemId,
+      proposerId: proposal.proposerId,
+      action: proposal.action,
+      patch: proposal.patch,
+      votes: proposal.votes || {},
+      outcome: 'rejected',
+      decidedBy: ownerId,
+      decidedAt: serverTimestamp(),
+    })
   })
 }
 

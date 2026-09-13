@@ -11,6 +11,7 @@ import { ProposalPanel } from '../components/ProposalPanel'
 import {
   removePlanItem,
   subscribeToPlanItems,
+  subscribeToPlanProposalDecisions,
   subscribeToPlanProposals,
 } from '../data/planRepository'
 import { PLAN_CATEGORY_MAP, normalizedPlanScope } from '../domain/planItem'
@@ -26,6 +27,7 @@ export function PlanPage() {
   const { trip, user } = useOutletContext()
   const [items, setItems] = useState([])
   const [proposals, setProposals] = useState([])
+  const [decisions, setDecisions] = useState([])
   const [editor, setEditor] = useState(null)
   const [notice, setNotice] = useState('')
   const [error, setError] = useState('')
@@ -38,6 +40,15 @@ export function PlanPage() {
       (subscriptionError) => setError(subscriptionError.message),
     ),
     [trip.id, user.uid],
+  )
+
+  useEffect(
+    () => subscribeToPlanProposalDecisions(
+      trip.id,
+      setDecisions,
+      (subscriptionError) => setError(subscriptionError.message),
+    ),
+    [trip.id],
   )
 
   useEffect(
@@ -91,7 +102,7 @@ export function PlanPage() {
 
       <div className="mt-5"><ErrorMessage message={error} /></div>
       {notice && <p className="mt-4 rounded-xl bg-teal-50 px-4 py-3 text-sm font-semibold text-teal-800">{notice}</p>}
-      <ProposalPanel trip={trip} user={user} proposals={proposals} items={items} />
+      <ProposalPanel trip={trip} user={user} proposals={proposals} decisions={decisions} items={items} />
 
       <div className="mt-6 space-y-3">
         {visibleItems.map((item) => {

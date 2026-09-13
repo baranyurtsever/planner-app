@@ -64,6 +64,14 @@ _Avoid_: Kart üyeliği, ortak sahiplik
 Bir Ortak Plan Öğesinde yapılması istenen fakat Gezi Sahibi onaylayana kadar resmî plana uygulanmayan değişiklik.
 _Avoid_: Taslak kart, bekleyen düzenleme
 
+**Öneri Oyu**:
+Bir Gezi katılımcısının bekleyen Plan Değişiklik Önerisini desteklediğini veya ona karşı olduğunu bildiren, nihai kararı bağlamayan görüşü.
+_Avoid_: Onay, veto, karar
+
+**Öneri Kararı**:
+Gezi Sahibinin bir Plan Değişiklik Önerisini kabul veya reddetmesiyle oluşan; öneri içeriğini ve karar anındaki oyları koruyan kalıcı kayıt.
+_Avoid_: Oy sonucu, geçici durum
+
 **Plan Katılım İsteği**:
 Bir Gezi katılımcısının görünür bir Kişisel Plan Öğesine katılmak için öğenin sahibine gönderdiği istek. Profil Ziyaretçileri Plan Katılım İsteği gönderemez.
 _Avoid_: Herkese açık katılım, arkadaşlık isteği

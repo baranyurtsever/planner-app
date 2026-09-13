@@ -101,10 +101,13 @@ describe('authenticated repository workflow', () => {
 
     const viewerPlans = await loadRepository('../../src/features/itinerary/data/planRepository.js', viewerDb)
     await expect(viewerPlans.changePlanItem(trip, { id: 'shared', ...sharedPlan }, 'viewer', { title: 'İzinsiz' })).rejects.toThrow()
+    await viewerPlans.voteOnPlanProposal('trip', proposal.id, 'viewer', 'support')
 
     const ownerPlans = await loadRepository('../../src/features/itinerary/data/planRepository.js', ownerDb)
     await ownerPlans.approvePlanProposal('trip', proposal.id, 'owner')
     expect((await getDoc(doc(ownerDb, 'trips', 'trip', 'planItems', 'shared'))).data().title).toBe('Önerilen yemek')
+    const decisions = await getDocs(collection(ownerDb, 'trips', 'trip', 'planProposalDecisions'))
+    expect(decisions.docs[0].data()).toMatchObject({ outcome: 'approved', votes: { viewer: 'support' } })
 
     const viewerParticipation = await loadRepository('../../src/features/itinerary/data/planParticipationRepository.js', viewerDb)
     await viewerParticipation.requestPlanParticipation('trip', { id: 'personal', ...personalPlan }, 'viewer')

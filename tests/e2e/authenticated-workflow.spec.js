@@ -152,14 +152,17 @@ test('owner, editor and viewer complete proposal, drag, resize, join and leave f
   await owner.page.evaluate(() => navigator.serviceWorker.ready)
   await owner.page.reload()
   await expect.poll(() => owner.page.evaluate(() => Boolean(navigator.serviceWorker.controller))).toBe(true)
-  expect(await owner.page.evaluate(() => {
+  await expect.poll(() => owner.page.evaluate(() => {
     const tripId = location.pathname.split('/')[3]
-    return Object.keys(localStorage).some((key) => key.startsWith('peregrin:offline:v1:') && key.endsWith(`:${tripId}`))
+    const cacheKey = Object.keys(localStorage).find((key) => key.startsWith('peregrin:offline:v1:') && key.endsWith(`:${tripId}`))
+    const cached = cacheKey ? JSON.parse(localStorage.getItem(cacheKey)) : null
+    return cached?.plans?.some((item) => item.title === 'Editor ortak önerisi') || false
   })).toBe(true)
   await owner.context.setOffline(true)
   await owner.page.reload()
   await expect(owner.page.getByRole('status')).toContainText('Çevrimdışısın')
   await expect(owner.page.getByRole('heading', { name: 'E2E Bangkok kopyası' })).toBeVisible()
+  await owner.page.getByRole('link', { name: 'Liste' }).click()
   await expect(owner.page.getByText('Editor ortak önerisi').first()).toBeVisible()
   await owner.context.setOffline(false)
 

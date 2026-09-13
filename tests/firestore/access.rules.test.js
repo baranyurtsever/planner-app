@@ -548,6 +548,32 @@ describe('plan item integrity', () => {
 })
 
 describe('plan change proposals', () => {
+  it('lets each participant change only their own vote and keeps decision records immutable', async () => {
+    const editorDb = testEnvironment.authenticatedContext('editor').firestore()
+    const viewerDb = testEnvironment.authenticatedContext('viewer').firestore()
+    const ownerDb = testEnvironment.authenticatedContext('owner').firestore()
+    const outsiderDb = testEnvironment.authenticatedContext('outsider').firestore()
+    const proposalRef = doc(editorDb, 'trips', 'public-trip', 'planChangeProposals', 'voted')
+    await assertSucceeds(setDoc(proposalRef, {
+      proposerId: 'editor', targetItemId: 'shared-plan', action: 'update',
+      patch: { title: 'Oylanan başlık' }, status: 'pending', votes: {},
+    }))
+    await assertSucceeds(updateDoc(doc(viewerDb, proposalRef.path), { 'votes.viewer': 'support' }))
+    await assertFails(updateDoc(doc(editorDb, proposalRef.path), { 'votes.viewer': 'oppose' }))
+    await assertFails(updateDoc(doc(viewerDb, proposalRef.path), { 'votes.viewer': 'invalid' }))
+
+    const decisionRef = doc(ownerDb, 'trips', 'public-trip', 'planProposalDecisions', 'decision')
+    await assertSucceeds(setDoc(decisionRef, {
+      proposalId: 'voted', targetItemId: 'shared-plan', proposerId: 'editor', action: 'update',
+      patch: { title: 'Oylanan başlık' }, votes: { viewer: 'support' }, outcome: 'rejected',
+      decidedBy: 'owner', decidedAt: serverTimestamp(),
+    }))
+    await assertSucceeds(getDoc(doc(viewerDb, decisionRef.path)))
+    await assertFails(getDoc(doc(outsiderDb, decisionRef.path)))
+    await assertFails(updateDoc(decisionRef, { outcome: 'approved' }))
+    await assertFails(deleteDoc(decisionRef))
+  })
+
   it('allows editors to propose shared changes and only owners to decide', async () => {
     const editorDb = testEnvironment.authenticatedContext('editor').firestore()
     const viewerDb = testEnvironment.authenticatedContext('viewer').firestore()
