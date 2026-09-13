@@ -1,6 +1,7 @@
 import { CALENDAR_ROW_HEIGHT } from '../domain/calendarLayout'
 import { PLAN_CATEGORY_MAP } from '../domain/planItem'
 import { formatCalendarTimeLabel } from '../domain/planTime'
+import { formatTravelDuration, TRAVEL_MODE_MAP } from '../domain/travel'
 
 const categoryStyles = {
   flight: 'border-indigo-300 bg-indigo-100 text-indigo-950',
@@ -26,7 +27,7 @@ function timeLabel(minute) {
   return `${String(Math.floor(minute / 60)).padStart(2, '0')}:${String(minute % 60).padStart(2, '0')}`
 }
 
-export function CalendarCard({ item, layout, ghost = false, hidden = false, deleting = false, onOpen, onInteractionStart, editable, onSelectProposal }) {
+export function CalendarCard({ item, layout, travelWarning = null, ghost = false, hidden = false, deleting = false, onOpen, onInteractionStart, editable, onSelectProposal }) {
   const category = PLAN_CATEGORY_MAP[item.category] || PLAN_CATEGORY_MAP.other
   const height = Math.max(18, ((item.endMinute - item.startMinute) / 60) * CALENDAR_ROW_HEIGHT)
   const displayTime = item.time?.kind === 'timed' ? formatCalendarTimeLabel(item.time) : `${timeLabel(item.startMinute)}–${timeLabel(item.endMinute)}`
@@ -35,7 +36,7 @@ export function CalendarCard({ item, layout, ghost = false, hidden = false, dele
       role="button"
       aria-hidden={hidden || undefined}
       tabIndex={0}
-      title={`${item.title} · ${displayTime}`}
+      title={`${item.title} · ${displayTime}${travelWarning ? ` · Ulaşım için ${formatTravelDuration(travelWarning.shortageMinutes)} eksik` : ''}`}
       onClick={(event) => { event.stopPropagation(); if (!ghost) onOpen(item) }}
       onKeyDown={(event) => { if ((event.key === 'Enter' || event.key === ' ') && !ghost) onOpen(item) }}
       onPointerDown={(event) => {
@@ -51,7 +52,7 @@ export function CalendarCard({ item, layout, ghost = false, hidden = false, dele
       }}
     >
       {editable && <span data-resize-edge="start" className="absolute inset-x-0 top-0 h-2 cursor-ns-resize" />}
-      <p className="truncate text-[10px] font-black">{ghost ? `ÖNERİ @${item.proposerId || '—'} · ` : ''}{layout.columnCount > 1 ? '⚠ ' : ''}{category.icon} {displayTime}</p>
+      <p className="truncate text-[10px] font-black">{ghost ? `ÖNERİ @${item.proposerId || '—'} · ` : ''}{layout.columnCount > 1 || travelWarning ? '⚠ ' : ''}{category.icon} {displayTime}</p>
       <h3 className="truncate text-xs font-black">{item.title}</h3>
       {ghost && item.proposalOptions?.length > 1 && (
         <select aria-label={`${item.title} önerileri`} value={item.proposalId} onClick={(event) => event.stopPropagation()} onChange={(event) => onSelectProposal(item.proposalGroupKey, event.target.value)} className="mt-1 max-w-full rounded border border-amber-500 bg-white/90 text-[10px] font-bold">
@@ -62,6 +63,8 @@ export function CalendarCard({ item, layout, ghost = false, hidden = false, dele
       <aside role="tooltip" aria-label={`${item.title} ayrıntıları`} className="absolute left-0 top-full z-50 mt-1 hidden min-w-56 rounded-xl bg-slate-950 p-3 text-xs font-medium normal-case text-white shadow-xl group-hover:block group-focus:block">
         <p className="font-black">{item.title}</p>
         <p>{displayTime} · {category.label} · {statusLabels[item.status] || item.status}</p>
+        {item.travelFromPrevious?.durationMinutes > 0 && <p className="mt-1">{TRAVEL_MODE_MAP[item.travelFromPrevious.mode]?.icon || '➜'} Önceki duraktan {formatTravelDuration(item.travelFromPrevious.durationMinutes)}</p>}
+        {travelWarning && <p className="mt-1 font-bold text-amber-300">Yetişmek için {formatTravelDuration(travelWarning.shortageMinutes)} daha gerekiyor.</p>}
         {item.location?.name && <p>{item.location.name}</p>}
         {item.notes && <p className="mt-1 text-slate-200">{item.notes}</p>}
       </aside>

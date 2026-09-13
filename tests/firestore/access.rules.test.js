@@ -401,6 +401,15 @@ describe('plan item integrity', () => {
         endTimeZone: 'Europe/Istanbul',
       },
     })))
+    await assertFails(setDoc(planItem, personalPlan({
+      travelFromPrevious: { mode: 'teleport', durationMinutes: 10 },
+    })))
+    await assertFails(setDoc(planItem, personalPlan({
+      travelFromPrevious: { mode: 'walk', durationMinutes: 0 },
+    })))
+    await assertSucceeds(setDoc(planItem, personalPlan({
+      travelFromPrevious: { mode: 'walk', durationMinutes: 25 },
+    })))
   })
 
   it('allows only the trip owner to directly mutate shared plans', async () => {

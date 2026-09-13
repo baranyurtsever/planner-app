@@ -48,6 +48,7 @@ export function cachePlansForOffline(tripId, userId, items) {
     participantIds: item.scope === 'personal' && item.participantIds?.includes(userId) ? [userId] : [],
     excludedParticipantIds: item.scope !== 'personal' && item.excludedParticipantIds?.includes(userId) ? [userId] : [],
     location: { name: item.location?.name || '', mapUrl: item.location?.mapUrl || '' },
+    travelFromPrevious: item.travelFromPrevious || { mode: 'none', durationMinutes: 0 },
     time: item.time,
   }))
   write(userId, tripId, { ...read(userId, tripId), plans, syncedAt: new Date().toISOString() })

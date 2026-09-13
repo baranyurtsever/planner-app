@@ -32,6 +32,7 @@ import {
 } from '../domain/calendarLayout'
 import { PLAN_CATEGORY_MAP } from '../domain/planItem'
 import { downloadIcsCalendar, exportablePlanItems } from '../domain/icsCalendar'
+import { analyzeTravelGaps, formatTravelDuration } from '../domain/travel'
 
 const DAY_HEIGHT = CALENDAR_ROW_HEIGHT * 24
 
@@ -118,6 +119,7 @@ export function CalendarPage() {
   const displayedItems = useMemo(() => items.map((item) => (
     optimisticTimes[item.id] ? { ...item, time: optimisticTimes[item.id] } : item
   )), [items, optimisticTimes])
+  const travelWarnings = useMemo(() => analyzeTravelGaps(displayedItems), [displayedItems])
 
   const officialTimed = useMemo(
     () => displayedItems.filter((item) => item.time?.kind === 'timed').flatMap(calendarIntervals),
@@ -381,6 +383,16 @@ export function CalendarPage() {
       <div className="mt-4"><ErrorMessage message={error} /></div>
       {failedChange && <button type="button" onClick={() => commitChange(failedChange)} className="mt-2 rounded-full border border-rose-200 px-4 py-2 text-sm font-bold text-rose-700">Yeniden dene</button>}
       {notice && <p className="mt-3 rounded-xl bg-teal-50 px-4 py-3 text-sm font-semibold text-teal-800">{notice}</p>}
+      {travelWarnings.size > 0 && (
+        <div className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
+          <p className="font-black">⚠ {travelWarnings.size} planda ulaşım süresi yetersiz</p>
+          <ul className="mt-1 space-y-1">
+            {[...travelWarnings.values()].map((warning) => (
+              <li key={warning.item.id}><strong>{warning.previous.title}</strong> → <strong>{warning.item.title}</strong>: {formatTravelDuration(warning.shortageMinutes)} eksik</li>
+            ))}
+          </ul>
+        </div>
+      )}
       <ProposalPanel trip={trip} user={user} proposals={proposals} items={items} />
 
       <CalendarScrollFrame
@@ -487,6 +499,7 @@ export function CalendarPage() {
                       key={item.id}
                       item={item}
                       layout={layouts[item.id] || persistentLayouts[item.id]}
+                      travelWarning={travelWarnings.get(item.id)}
                       ghost={Boolean(item.proposalId) || Boolean(item.interactionPreview)}
                       hidden={item.id === interaction?.item.id}
                       deleting={deletingIds.has(item.id)}

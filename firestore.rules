@@ -89,6 +89,17 @@ service cloud.firestore {
           getAfter(publicPath).data.visibility == planData.visibility &&
           getAfter(publicPath).data.notes == planData.notes &&
           getAfter(publicPath).data.location == planData.location &&
+          (
+            (
+              !('travelFromPrevious' in planData) &&
+              !('travelFromPrevious' in getAfter(publicPath).data)
+            ) ||
+            (
+              'travelFromPrevious' in planData &&
+              'travelFromPrevious' in getAfter(publicPath).data &&
+              getAfter(publicPath).data.travelFromPrevious == planData.travelFromPrevious
+            )
+          ) &&
           getAfter(publicPath).data.time == planData.time
         ) ||
         (planData.visibility != 'profile' && !existsAfter(publicPath));
@@ -133,6 +144,19 @@ service cloud.firestore {
         );
     }
 
+    function validTravelFromPrevious(travel) {
+      return travel is map &&
+        travel.keys().hasOnly(['mode', 'durationMinutes']) &&
+        travel.mode in ['none', 'walk', 'transit', 'drive', 'bike', 'flight', 'other'] &&
+        travel.durationMinutes is int &&
+        travel.durationMinutes >= 0 &&
+        travel.durationMinutes <= 10080 &&
+        (
+          (travel.mode == 'none' && travel.durationMinutes == 0) ||
+          (travel.mode != 'none' && travel.durationMinutes > 0)
+        );
+    }
+
     function isSharedPlanItem(planData) {
       return !('scope' in planData) || planData.scope == 'shared';
     }
@@ -158,6 +182,7 @@ service cloud.firestore {
         ] &&
         planData.status in ['todo', 'done', 'postponed', 'cancelled'] &&
         planData.visibility in ['private', 'trip', 'profile'] &&
+        (!('travelFromPrevious' in planData) || validTravelFromPrevious(planData.travelFromPrevious)) &&
         validPlanTime(planData.time) &&
         (
           (
@@ -231,6 +256,7 @@ service cloud.firestore {
           'visibility',
           'notes',
           'location',
+          'travelFromPrevious',
           'time'
         ]) &&
         (!('title' in patch) || (patch.title is string && patch.title.size() > 0)) &&
@@ -250,6 +276,7 @@ service cloud.firestore {
         (!('visibility' in patch) || patch.visibility in ['trip', 'profile']) &&
         (!('notes' in patch) || patch.notes is string) &&
         (!('location' in patch) || patch.location is map) &&
+        (!('travelFromPrevious' in patch) || validTravelFromPrevious(patch.travelFromPrevious)) &&
         (!('time' in patch) || validPlanTime(patch.time));
     }
 
@@ -260,6 +287,7 @@ service cloud.firestore {
         (!('visibility' in patch) || planData.visibility == patch.visibility) &&
         (!('notes' in patch) || planData.notes == patch.notes) &&
         (!('location' in patch) || planData.location == patch.location) &&
+        (!('travelFromPrevious' in patch) || planData.travelFromPrevious == patch.travelFromPrevious) &&
         (!('time' in patch) || planData.time == patch.time);
     }
 
@@ -571,6 +599,7 @@ service cloud.firestore {
             'visibility',
             'notes',
             'location',
+            'travelFromPrevious',
             'time',
             'updatedAt'
           ]) &&
@@ -597,6 +626,23 @@ service cloud.firestore {
           request.resource.data.location == getAfter(
             /databases/$(database)/documents/trips/$(tripId)/planItems/$(planItemId)
           ).data.location &&
+          (
+            (
+              !('travelFromPrevious' in request.resource.data) &&
+              !('travelFromPrevious' in getAfter(
+                /databases/$(database)/documents/trips/$(tripId)/planItems/$(planItemId)
+              ).data)
+            ) ||
+            (
+              'travelFromPrevious' in request.resource.data &&
+              'travelFromPrevious' in getAfter(
+                /databases/$(database)/documents/trips/$(tripId)/planItems/$(planItemId)
+              ).data &&
+              request.resource.data.travelFromPrevious == getAfter(
+                /databases/$(database)/documents/trips/$(tripId)/planItems/$(planItemId)
+              ).data.travelFromPrevious
+            )
+          ) &&
           request.resource.data.time == getAfter(
             /databases/$(database)/documents/trips/$(tripId)/planItems/$(planItemId)
           ).data.time &&

@@ -3,29 +3,31 @@ import { MemoryRouter, Outlet, Route, Routes } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { CalendarPage } from './CalendarPage'
 
-const mocks = vi.hoisted(() => ({ changePlanItem: vi.fn(), proposals: [] }))
+const mocks = vi.hoisted(() => ({ changePlanItem: vi.fn(), proposals: [], items: [] }))
+
+const baseItem = {
+  id: 'plan',
+  scope: 'shared',
+  ownerId: null,
+  title: 'Akşam yemeği',
+  category: 'food',
+  status: 'todo',
+  visibility: 'trip',
+  notes: 'Pencere kenarında buluş.',
+  location: { name: 'Kadıköy', mapUrl: '', lat: null, lng: null },
+  time: {
+    kind: 'timed',
+    startsAt: '2026-09-12T09:00:00.000Z',
+    endsAt: '2026-09-12T10:00:00.000Z',
+    startTimeZone: 'Europe/Istanbul',
+    endTimeZone: 'Europe/Istanbul',
+  },
+}
 
 vi.mock('../data/planRepository', () => ({
   changePlanItem: mocks.changePlanItem,
   subscribeToPlanItems: (_tripId, _userId, callback) => {
-    callback([{
-      id: 'plan',
-      scope: 'shared',
-      ownerId: null,
-      title: 'Akşam yemeği',
-      category: 'food',
-      status: 'todo',
-      visibility: 'trip',
-      notes: 'Pencere kenarında buluş.',
-      location: { name: 'Kadıköy', mapUrl: '', lat: null, lng: null },
-      time: {
-        kind: 'timed',
-        startsAt: '2026-09-12T09:00:00.000Z',
-        endsAt: '2026-09-12T10:00:00.000Z',
-        startTimeZone: 'Europe/Istanbul',
-        endTimeZone: 'Europe/Istanbul',
-      },
-    }])
+    callback(mocks.items)
     return vi.fn()
   },
   subscribeToPlanProposals: (_tripId, callback) => {
@@ -54,6 +56,7 @@ describe('CalendarPage pointer interactions', () => {
     vi.clearAllMocks()
     mocks.changePlanItem.mockResolvedValue({ kind: 'item' })
     mocks.proposals = []
+    mocks.items = [baseItem]
     window.matchMedia = vi.fn().mockReturnValue({
       matches: false,
       addEventListener: vi.fn(),
@@ -85,6 +88,31 @@ describe('CalendarPage pointer interactions', () => {
     )
 
     expect(getByText(/ÖNERİ @editor.*Ada turu/)).toBeInTheDocument()
+  })
+
+  it('shows the missing travel time between consecutive plans', () => {
+    mocks.items = [
+      { ...baseItem, id: 'museum', title: 'Müze' },
+      {
+        ...baseItem,
+        id: 'dinner',
+        title: 'Akşam yemeği',
+        travelFromPrevious: { mode: 'transit', durationMinutes: 45 },
+        time: { ...baseItem.time, startsAt: '2026-09-12T10:15:00.000Z', endsAt: '2026-09-12T11:15:00.000Z' },
+      },
+    ]
+    const { getByText } = render(
+      <MemoryRouter initialEntries={['/calendar?date=2026-09-12']}>
+        <Routes>
+          <Route element={<Outlet context={{ trip, user: { uid: 'owner' } }} />}>
+            <Route path="calendar" element={<CalendarPage />} />
+          </Route>
+        </Routes>
+      </MemoryRouter>,
+    )
+
+    expect(getByText('⚠ 1 planda ulaşım süresi yetersiz')).toBeInTheDocument()
+    expect(getByText((_content, element) => element.tagName === 'LI' && element.textContent === 'Müze → Akşam yemeği: 30 dk eksik')).toBeInTheDocument()
   })
 
   it('groups all-day proposals for the same Plan Item into one selectable ghost', () => {

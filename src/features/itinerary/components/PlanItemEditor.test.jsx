@@ -154,6 +154,21 @@ describe('PlanItemEditor form boundaries', () => {
     expect(onClose).toHaveBeenCalledOnce()
   })
 
+  it('saves the travel mode and estimated duration from the previous plan', async () => {
+    mocks.savePlanItem.mockResolvedValue({ kind: 'item', id: 'plan' })
+    const { container } = render(<PlanItemEditor trip={trip} item={item} user={{ uid: 'owner' }} onClose={vi.fn()} />)
+
+    fireEvent.change(screen.getByLabelText('Ulaşım şekli'), { target: { value: 'transit' } })
+    fireEvent.change(screen.getByLabelText('Tahmini ulaşım süresi'), { target: { value: '35' } })
+    fireEvent.submit(container.querySelector('#plan-item-editor-form'))
+
+    await waitFor(() => expect(mocks.savePlanItem).toHaveBeenCalledWith(
+      trip,
+      expect.objectContaining({ travelFromPrevious: { mode: 'transit', durationMinutes: 35 } }),
+      'owner',
+    ))
+  })
+
   it('duplicates a plan as a new sanitized item', async () => {
     mocks.savePlanItem.mockResolvedValue({ kind: 'item', id: 'copy' })
     render(

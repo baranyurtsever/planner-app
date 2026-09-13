@@ -12,6 +12,7 @@ const original = {
   visibility: 'trip',
   notes: '',
   location: { name: '', mapUrl: '', lat: null, lng: null },
+  travelFromPrevious: { mode: 'none', durationMinutes: 0 },
   time: { kind: 'date', localDate: '2026-09-12' },
   participantIds: ['owner', 'viewer'],
   excludedParticipantIds: [],
@@ -29,6 +30,15 @@ describe('changedPlanContentPatch', () => {
 
     expect(changedPlanContentPatch(original, staleEditorValue, 'owner')).toEqual({
       title: 'Yeni başlık',
+    })
+  })
+
+  it('includes travel planning changes in the editable content patch', () => {
+    expect(changedPlanContentPatch(original, {
+      ...original,
+      travelFromPrevious: { mode: 'transit', durationMinutes: 40 },
+    }, 'owner')).toEqual({
+      travelFromPrevious: { mode: 'transit', durationMinutes: 40 },
     })
   })
 })

@@ -9,6 +9,7 @@ import {
 } from '../domain/planTime'
 import { PLAN_CATEGORIES, PLAN_SCOPES, PLAN_STATUSES } from '../domain/planItem'
 import { createTimeZoneOptions } from '../domain/timeZones'
+import { TRAVEL_MODES } from '../domain/travel'
 import { downloadIcsCalendar } from '../domain/icsCalendar'
 import { savePlanItem } from '../data/planRepository'
 import { PlanParticipationSection } from './PlanParticipationSection'
@@ -50,6 +51,8 @@ function initialForm(item, initialSlot, userId, defaultTimeZone = localTimeZone)
       locationLat: item.location?.lat ?? '',
       locationLng: item.location?.lng ?? '',
       mapUrl: item.location?.mapUrl || '',
+      travelMode: item.travelFromPrevious?.mode || 'none',
+      travelDurationMinutes: item.travelFromPrevious?.durationMinutes || 0,
       participantIds: item.participantIds || [],
       excludedParticipantIds: item.excludedParticipantIds || [],
       blockedParticipantIds: item.blockedParticipantIds || [],
@@ -76,6 +79,8 @@ function initialForm(item, initialSlot, userId, defaultTimeZone = localTimeZone)
     locationLat: '',
     locationLng: '',
     mapUrl: '',
+    travelMode: 'none',
+    travelDurationMinutes: 0,
     participantIds: [userId],
     excludedParticipantIds: [],
     blockedParticipantIds: [],
@@ -176,7 +181,11 @@ export function PlanItemEditor({
             startTimeZone: form.startTimeZone,
             endTimeZone: form.endTimeZone,
           })
-      const result = await savePlanItem(trip, { ...item, ...form, time, _original: item }, user.uid)
+      const travelFromPrevious = {
+        mode: form.travelMode,
+        durationMinutes: form.travelMode === 'none' ? 0 : Number(form.travelDurationMinutes),
+      }
+      const result = await savePlanItem(trip, { ...item, ...form, travelFromPrevious, time, _original: item }, user.uid)
       onSaved?.(result)
       onClose()
     } catch (saveError) {
@@ -269,6 +278,22 @@ export function PlanItemEditor({
           <div className="grid grid-cols-2 gap-3">
             <label className="text-sm font-semibold text-slate-600">Enlem<input type="number" step="any" value={form.locationLat} onChange={(event) => setForm({ ...form, locationLat: event.target.value })} className="mt-1 w-full rounded-xl border border-slate-200 px-4 py-3" /></label>
             <label className="text-sm font-semibold text-slate-600">Boylam<input type="number" step="any" value={form.locationLng} onChange={(event) => setForm({ ...form, locationLng: event.target.value })} className="mt-1 w-full rounded-xl border border-slate-200 px-4 py-3" /></label>
+          </div>
+          <div className="rounded-2xl border border-sky-100 bg-sky-50/60 p-4 md:col-span-2">
+            <p className="text-sm font-black text-sky-950">Önceki plandan buraya ulaşım</p>
+            <p className="mt-1 text-xs text-sky-800">Takvim, iki plan arasındaki boşluğun yeterli olup olmadığını bu süreyle kontrol eder.</p>
+            <div className="mt-3 grid gap-3 sm:grid-cols-2">
+              <label className="text-sm font-semibold text-slate-600">
+                Ulaşım şekli
+                <select aria-label="Ulaşım şekli" value={form.travelMode} onChange={(event) => setForm({ ...form, travelMode: event.target.value })} className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-4 py-3">
+                  {TRAVEL_MODES.map((mode) => <option key={mode.value} value={mode.value}>{mode.icon} {mode.label}</option>)}
+                </select>
+              </label>
+              <label className="text-sm font-semibold text-slate-600">
+                Tahmini süre (dakika)
+                <input aria-label="Tahmini ulaşım süresi" type="number" min="1" max="10080" step="5" required={form.travelMode !== 'none'} disabled={form.travelMode === 'none'} value={form.travelDurationMinutes} onChange={(event) => setForm({ ...form, travelDurationMinutes: event.target.value })} className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 disabled:bg-slate-100" />
+              </label>
+            </div>
           </div>
           <label className="text-sm font-semibold text-slate-600 md:col-span-2">Not<textarea value={form.notes} onChange={(event) => setForm({ ...form, notes: event.target.value })} className="mt-1 min-h-28 w-full rounded-xl border border-slate-200 px-4 py-3" /></label>
         </fieldset>

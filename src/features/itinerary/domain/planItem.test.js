@@ -13,6 +13,7 @@ describe('publicPlanFields', () => {
 
     expect(fields.scope).toBe('shared')
     expect(fields.category).toBe('other')
+    expect(fields.travelFromPrevious).toEqual({ mode: 'none', durationMinutes: 0 })
     expect(Object.values(fields)).not.toContain(undefined)
   })
 })

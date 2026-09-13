@@ -43,7 +43,7 @@ function changedPlanPatch(original, cleaned, userId) {
 }
 
 const CONTENT_FIELDS = new Set([
-  'title', 'category', 'status', 'visibility', 'notes', 'location', 'time',
+  'title', 'category', 'status', 'visibility', 'notes', 'location', 'travelFromPrevious', 'time',
 ])
 
 export function changedPlanContentPatch(original, cleaned, userId) {

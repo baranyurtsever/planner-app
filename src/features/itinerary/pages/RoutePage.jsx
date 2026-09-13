@@ -7,6 +7,7 @@ import { subscribeToPlanItems } from '../data/planRepository'
 import { planItemDate } from '../domain/calendar'
 import { formatPlanTime } from '../domain/planTime'
 import { hasValidCoordinates } from '../domain/coordinates'
+import { formatTravelDuration, TRAVEL_MODE_MAP } from '../domain/travel'
 
 export function RoutePage() {
   const { trip, user } = useOutletContext()
@@ -51,8 +52,16 @@ export function RoutePage() {
         <div className="space-y-3">
           {datedItems.map((item, index) => {
             const display = formatPlanTime(item.time)
+            const travel = item.travelFromPrevious
             return (
-              <article key={item.id} className="rounded-2xl border border-slate-200 bg-white p-5">
+              <div key={item.id}>
+              {index > 0 && travel?.durationMinutes > 0 && (
+                <div className="mx-4 flex items-center gap-2 border-l-2 border-dashed border-sky-300 py-3 pl-5 text-xs font-bold text-sky-800">
+                  <span>{TRAVEL_MODE_MAP[travel.mode]?.icon || '➜'}</span>
+                  <span>{formatTravelDuration(travel.durationMinutes)} tahmini ulaşım</span>
+                </div>
+              )}
+              <article className="rounded-2xl border border-slate-200 bg-white p-5">
                 <div className="flex gap-3">
                   <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-teal-800 text-sm font-black text-white">{index + 1}</span>
                   <div>
@@ -63,6 +72,7 @@ export function RoutePage() {
                   </div>
                 </div>
               </article>
+              </div>
             )
           })}
           {!datedItems.length && <EmptyState title="Bu tarihte rota yok" description="Liste sekmesinden konumlu bir Plan Öğesi ekle." />}
