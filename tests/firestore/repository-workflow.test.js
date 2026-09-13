@@ -1,6 +1,6 @@
 import fs from 'node:fs'
 import { initializeTestEnvironment } from '@firebase/rules-unit-testing'
-import { doc, getDoc, setDoc } from 'firebase/firestore'
+import { collection, doc, getDoc, getDocs, query, setDoc, where } from 'firebase/firestore'
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 
 let environment
@@ -44,6 +44,28 @@ beforeAll(async () => {
 afterAll(async () => environment.cleanup())
 
 describe('authenticated repository workflow', () => {
+  it('duplicates a trip with shifted shared plans and no participants or personal plans', async () => {
+    const ownerDb = environment.authenticatedContext('owner').firestore()
+    const trips = await loadRepository('../../src/features/trips/data/tripRepository.js', ownerDb)
+    const tripId = await trips.duplicateTrip({
+      id: 'trip', ownerId: 'owner', memberIds: ['owner', 'editor', 'viewer'],
+      memberRoles: { owner: 'owner', editor: 'editor', viewer: 'viewer' },
+      name: 'Bangkok', locationName: 'Tayland', status: 'active', defaultTimeZone: 'Asia/Bangkok',
+    }, { name: 'Bangkok yeniden', startDate: '2026-10-01' }, 'owner')
+
+    const copiedTrip = (await getDoc(doc(ownerDb, 'trips', tripId))).data()
+    const copiedPlans = await getDocs(query(
+      collection(ownerDb, 'trips', tripId, 'planItems'),
+      where('visibility', 'in', ['trip', 'profile']),
+    ))
+    expect(copiedTrip).toMatchObject({ name: 'Bangkok yeniden', memberIds: ['owner'], visibility: 'private' })
+    expect(copiedPlans.size).toBe(1)
+    expect(copiedPlans.docs[0].data()).toMatchObject({
+      scope: 'shared', notes: '', time: { kind: 'date', localDate: '2026-10-01' },
+      excludedParticipantIds: [], blockedParticipantIds: [],
+    })
+  })
+
   it('creates and atomically accepts a trip invitation', async () => {
     const trip = {
       id: 'trip', name: 'Bangkok', ownerId: 'owner', memberIds: ['owner', 'editor', 'viewer'],

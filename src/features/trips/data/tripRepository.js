@@ -2,6 +2,7 @@ import {
   collection,
   doc,
   getDoc,
+  getDocs,
   onSnapshot,
   query,
   serverTimestamp,
@@ -9,6 +10,8 @@ import {
   writeBatch,
 } from 'firebase/firestore'
 import { db } from '../../../infrastructure/firebase/firestoreClient'
+import { publicPlanFields } from '../../itinerary/domain/planItem'
+import { daysBetween, duplicateSharedPlanItem, planLocalDate } from '../domain/duplication'
 
 export async function createTrip({ name, locationName, visibility }, userId) {
   const trip = {
@@ -32,6 +35,55 @@ export async function createTrip({ name, locationName, visibility }, userId) {
     batch.set(doc(db, 'profiles', userId, 'publicTrips', reference.id), projection)
   }
   await batch.commit()
+  return reference.id
+}
+
+export async function duplicateTrip(sourceTrip, { name, startDate }, userId) {
+  if (sourceTrip.ownerId !== userId) throw new Error('Yalnız Gezi Sahibi bu Geziyi çoğaltabilir.')
+  const snapshot = await getDocs(query(
+    collection(db, 'trips', sourceTrip.id, 'planItems'),
+    where('visibility', 'in', ['trip', 'profile']),
+  ))
+  const sourceItems = snapshot.docs
+    .map((item) => ({ id: item.id, ...item.data() }))
+    .filter((item) => (item.scope || 'shared') === 'shared')
+  if (sourceItems.length > 240) throw new Error('Bu Gezi tek işlemde çoğaltılamayacak kadar fazla Plan Öğesi içeriyor.')
+  const firstDate = sourceItems.map(planLocalDate).sort()[0] || startDate
+  const dayOffset = daysBetween(firstDate, startDate)
+  const reference = doc(collection(db, 'trips'))
+  const trip = {
+    name: name.trim(),
+    locationName: sourceTrip.locationName || '',
+    ownerId: userId,
+    memberIds: [userId],
+    memberRoles: { [userId]: 'owner' },
+    visibility: 'private',
+    status: 'active',
+    defaultTimeZone: sourceTrip.defaultTimeZone || Intl.DateTimeFormat().resolvedOptions().timeZone,
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  }
+  const tripBatch = writeBatch(db)
+  tripBatch.set(reference, trip)
+  await tripBatch.commit()
+  const batch = writeBatch(db)
+  sourceItems.forEach((source) => {
+    const { id: _sourceId, createdAt: _createdAt, updatedAt: _updatedAt, ...content } = source
+    const nextReference = doc(collection(db, 'trips', reference.id, 'planItems'))
+    const duplicated = {
+      ...duplicateSharedPlanItem(content, userId, dayOffset),
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    }
+    batch.set(nextReference, duplicated)
+    if (duplicated.visibility === 'profile') {
+      batch.set(doc(db, 'trips', reference.id, 'publicPlanItems', nextReference.id), {
+        ...publicPlanFields(duplicated),
+        updatedAt: serverTimestamp(),
+      })
+    }
+  })
+  if (sourceItems.length) await batch.commit()
   return reference.id
 }
 

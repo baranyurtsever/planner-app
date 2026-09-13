@@ -516,10 +516,13 @@ export function CalendarPage() {
           trip={trip}
           user={user}
           item={editor.item}
+          duplicateOf={editor.duplicateOf}
+          key={editor.duplicateOf ? `duplicate-${editor.duplicateOf.id}` : editor.item?.id || 'new'}
           liveItem={items.find((item) => item.id === editor.item?.id) || editor.item}
           initialSlot={editor.initialSlot}
           readOnly={editor.readOnly}
           onClose={() => setEditor(null)}
+          onDuplicate={(source) => setEditor({ item: null, duplicateOf: source, readOnly: false })}
           onSaved={(result) => setNotice(
             result.kind === 'proposal' ? 'Değişiklik önerisi gönderildi.' : 'Plan Öğesi kaydedildi.',
           )}

@@ -82,17 +82,36 @@ function initialForm(item, initialSlot, userId, defaultTimeZone = localTimeZone)
   }
 }
 
+function duplicatedForm(template, userId, defaultTimeZone) {
+  const form = initialForm(template, null, userId, defaultTimeZone)
+  const personal = form.scope === PLAN_SCOPES.PERSONAL
+  return {
+    ...form,
+    id: undefined,
+    ownerId: personal ? userId : '',
+    title: `${form.title} (kopya)`,
+    notes: '',
+    participantIds: personal ? [userId] : [],
+    excludedParticipantIds: [],
+    blockedParticipantIds: [],
+  }
+}
+
 export function PlanItemEditor({
   trip,
   user,
   item = null,
+  duplicateOf = null,
   liveItem = item,
   initialSlot = null,
   readOnly = false,
   onClose,
   onSaved,
+  onDuplicate,
 }) {
-  const [form, setForm] = useState(() => initialForm(item, initialSlot, user.uid, trip.defaultTimeZone))
+  const [form, setForm] = useState(() => duplicateOf
+    ? duplicatedForm(duplicateOf, user.uid, trip.defaultTimeZone)
+    : initialForm(item, initialSlot, user.uid, trip.defaultTimeZone))
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
   const dialogRef = useRef(null)
@@ -111,9 +130,10 @@ export function PlanItemEditor({
   )
   const title = useMemo(() => {
     if (effectiveReadOnly) return 'Plan Öğesi'
+    if (duplicateOf) return 'Plan Öğesini çoğalt'
     if (item) return form.scope === PLAN_SCOPES.SHARED ? 'Ortak Planı düzenle' : 'Kişisel Planı düzenle'
     return 'Yeni Plan Öğesi'
-  }, [effectiveReadOnly, form.scope, item])
+  }, [duplicateOf, effectiveReadOnly, form.scope, item])
 
   useEffect(() => {
     const dialog = dialogRef.current
@@ -259,6 +279,7 @@ export function PlanItemEditor({
         {item && <PlanParticipationSection trip={trip} item={liveItem || item} user={user} />}
         <footer className="sticky bottom-0 flex justify-end gap-3 border-t border-slate-100 bg-white/95 px-6 py-4 backdrop-blur">
           {item && <button type="button" onClick={() => downloadIcsCalendar([liveItem || item], item.title, `${item.title.toLowerCase().replace(/[^a-z0-9]+/g, '-') || 'plan'}.ics`)} className="mr-auto rounded-xl border border-teal-700 px-4 py-3 font-bold text-teal-800">Takvime aktar</button>}
+          {item && !effectiveReadOnly && <button type="button" onClick={() => onDuplicate?.(liveItem || item)} className="rounded-xl border border-slate-300 px-4 py-3 font-bold">Çoğalt</button>}
           <button type="button" onClick={onClose} className="rounded-xl border border-slate-200 px-5 py-3 font-bold">Kapat</button>
           {!effectiveReadOnly && <button type="submit" form="plan-item-editor-form" disabled={saving} className="rounded-xl bg-slate-900 px-5 py-3 font-bold text-white disabled:opacity-50">{saving ? 'Kaydediliyor…' : role === TRIP_ROLES.EDITOR && form.scope === PLAN_SCOPES.SHARED ? 'Öneri gönder' : 'Kaydet'}</button>}
         </footer>

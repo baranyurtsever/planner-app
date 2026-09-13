@@ -154,6 +154,29 @@ describe('PlanItemEditor form boundaries', () => {
     expect(onClose).toHaveBeenCalledOnce()
   })
 
+  it('duplicates a plan as a new sanitized item', async () => {
+    mocks.savePlanItem.mockResolvedValue({ kind: 'item', id: 'copy' })
+    render(
+      <PlanItemEditor
+        trip={trip}
+        duplicateOf={{ ...item, notes: 'Kopyalanmaması gereken not', excludedParticipantIds: ['viewer'] }}
+        user={{ uid: 'owner' }}
+        onClose={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByRole('heading', { name: 'Plan Öğesini çoğalt' })).toBeInTheDocument()
+    expect(screen.getByLabelText('Başlık')).toHaveValue('Akşam yemeği (kopya)')
+    expect(screen.getByLabelText('Not')).toHaveValue('')
+    fireEvent.click(screen.getByRole('button', { name: 'Kaydet' }))
+
+    await waitFor(() => expect(mocks.savePlanItem).toHaveBeenCalledWith(
+      trip,
+      expect.objectContaining({ id: undefined, title: 'Akşam yemeği (kopya)', notes: '', excludedParticipantIds: [] }),
+      'owner',
+    ))
+  })
+
   it('adds a linked expense without submitting the plan item form', async () => {
     render(
       <PlanItemEditor trip={trip} item={item} user={{ uid: 'owner' }} onClose={vi.fn()} />,

@@ -146,12 +146,15 @@ export function PlanPage() {
 
       {editor && (
         <PlanItemEditor
+          key={editor.duplicateOf ? `duplicate-${editor.duplicateOf.id}` : editor.item?.id || 'new'}
           trip={trip}
           user={user}
           item={editor.item}
+          duplicateOf={editor.duplicateOf}
           liveItem={items.find((item) => item.id === editor.item?.id) || editor.item}
           readOnly={editor.readOnly}
           onClose={() => setEditor(null)}
+          onDuplicate={(source) => setEditor({ item: null, duplicateOf: source, readOnly: false })}
           onSaved={(result) => setNotice(
             result.kind === 'proposal' ? 'Değişiklik önerisi gönderildi.' : 'Plan Öğesi kaydedildi.',
           )}
