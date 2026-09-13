@@ -16,7 +16,9 @@ const trip = {
 
 describe('TripDetailsView', () => {
   it('keeps participant management in the details page for the owner', () => {
-    const onSaveMember = vi.fn()
+    const onInviteMember = vi.fn()
+    const onChangeMemberRole = vi.fn()
+    const onCancelInvitation = vi.fn()
     const onSaveTrip = vi.fn()
     render(
       <TripDetailsView
@@ -25,10 +27,14 @@ describe('TripDetailsView', () => {
         profilesById={{
           owner: { displayName: 'Ada Lovelace', username: 'ada' },
           viewer: { displayName: 'Grace Hopper', username: 'grace' },
+          guest: { displayName: 'Alan Turing', username: 'alan' },
         }}
+        pendingInvitations={[{ id: 'trip_guest', inviteeId: 'guest', role: 'viewer' }]}
         onArchive={vi.fn()}
         onRemoveMember={vi.fn()}
-        onSaveMember={onSaveMember}
+        onChangeMemberRole={onChangeMemberRole}
+        onInviteMember={onInviteMember}
+        onCancelInvitation={onCancelInvitation}
         onSaveTrip={onSaveTrip}
       />,
     )
@@ -39,12 +45,17 @@ describe('TripDetailsView', () => {
     fireEvent.change(screen.getByLabelText('Katılımcı rolü'), {
       target: { value: 'editor' },
     })
-    fireEvent.click(screen.getByRole('button', { name: 'Ekle / güncelle' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Davet gönder' }))
 
-    expect(onSaveMember).toHaveBeenCalledWith('editor_user', 'editor')
+    expect(onInviteMember).toHaveBeenCalledWith('editor_user', 'editor')
     expect(screen.getByText('Ada Lovelace')).toBeInTheDocument()
     expect(screen.getByText('@ada')).toBeInTheDocument()
     expect(screen.queryByText('owner')).not.toBeInTheDocument()
+    expect(screen.getByText('Alan Turing')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Daveti iptal et' }))
+    expect(onCancelInvitation).toHaveBeenCalledWith(expect.objectContaining({ id: 'trip_guest' }))
+    fireEvent.change(screen.getByLabelText('Grace Hopper rolü'), { target: { value: 'editor' } })
+    expect(onChangeMemberRole).toHaveBeenCalledWith('viewer', 'editor')
     fireEvent.change(screen.getByLabelText('Gezi adı'), { target: { value: 'Bangkok 2028' } })
     fireEvent.change(screen.getByLabelText('Gezi görünürlüğü'), { target: { value: 'private' } })
     fireEvent.change(screen.getByLabelText('Varsayılan saat dilimi'), { target: { value: 'Asia/Bangkok' } })
@@ -65,7 +76,9 @@ describe('TripDetailsView', () => {
         user={{ uid: 'viewer' }}
         onArchive={vi.fn()}
         onRemoveMember={vi.fn()}
-        onSaveMember={vi.fn()}
+        onChangeMemberRole={vi.fn()}
+        onInviteMember={vi.fn()}
+        onCancelInvitation={vi.fn()}
         onSaveTrip={vi.fn()}
       />,
     )

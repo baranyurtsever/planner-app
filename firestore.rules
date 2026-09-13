@@ -281,6 +281,26 @@ service cloud.firestore {
         tripData.memberRoles[tripData.ownerId] == 'owner';
     }
 
+    function validTripInvitation(invitationId, invitationData) {
+      return invitationData.keys().hasOnly([
+          'tripId',
+          'tripName',
+          'inviterId',
+          'inviteeId',
+          'role',
+          'status',
+          'createdAt',
+          'updatedAt'
+        ]) &&
+        invitationData.tripId is string &&
+        invitationData.tripName is string &&
+        invitationData.inviterId is string &&
+        invitationData.inviteeId is string &&
+        invitationData.role in ['editor', 'viewer'] &&
+        invitationData.status in ['pending', 'accepted', 'rejected', 'cancelled'] &&
+        invitationId == invitationData.tripId + '_' + invitationData.inviteeId;
+    }
+
     match /profiles/{userId} {
       allow read: if true;
       allow create: if signedIn() &&
@@ -333,6 +353,26 @@ service cloud.firestore {
           validTripMembership(request.resource.data) &&
           request.resource.data.visibility in ['private', 'profile'] &&
           request.resource.data.status in ['active', 'archived']
+        ) ||
+        (
+          resource.data.status == 'active' &&
+          !resource.data.memberIds.hasAny([request.auth.uid]) &&
+          validTripMembership(request.resource.data) &&
+          request.resource.data.ownerId == resource.data.ownerId &&
+          request.resource.data.status == resource.data.status &&
+          request.resource.data.memberIds.hasAll(resource.data.memberIds) &&
+          request.resource.data.memberIds.hasAny([request.auth.uid]) &&
+          request.resource.data.memberIds.size() == resource.data.memberIds.size() + 1 &&
+          request.resource.data.memberRoles.diff(resource.data.memberRoles).affectedKeys().hasOnly([request.auth.uid]) &&
+          existsAfter(/databases/$(database)/documents/tripInvitations/$(tripId + '_' + request.auth.uid)) &&
+          getAfter(/databases/$(database)/documents/tripInvitations/$(tripId + '_' + request.auth.uid)).data.status == 'accepted' &&
+          getAfter(/databases/$(database)/documents/tripInvitations/$(tripId + '_' + request.auth.uid)).data.inviteeId == request.auth.uid &&
+          getAfter(/databases/$(database)/documents/tripInvitations/$(tripId + '_' + request.auth.uid)).data.role == request.resource.data.memberRoles[request.auth.uid] &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            'memberIds',
+            'memberRoles',
+            'updatedAt'
+          ])
         ) ||
         (
           resource.data.status == 'active' &&
@@ -703,6 +743,52 @@ service cloud.firestore {
         allow update: if false;
         allow delete: if isOwner(trip(tripId));
       }
+    }
+
+    match /tripInvitations/{invitationId} {
+      allow read: if signedIn() &&
+        (
+          resource == null ||
+          resource.data.inviterId == request.auth.uid ||
+          resource.data.inviteeId == request.auth.uid
+        );
+      allow create: if signedIn() &&
+        validTripInvitation(invitationId, request.resource.data) &&
+        request.resource.data.inviterId == request.auth.uid &&
+        request.resource.data.status == 'pending' &&
+        isOwner(trip(request.resource.data.tripId)) &&
+        isActiveTrip(request.resource.data.tripId) &&
+        !trip(request.resource.data.tripId).memberIds.hasAny([request.resource.data.inviteeId]) &&
+        exists(/databases/$(database)/documents/profiles/$(request.resource.data.inviteeId));
+      allow update: if signedIn() &&
+        validTripInvitation(invitationId, request.resource.data) &&
+        request.resource.data.tripId == resource.data.tripId &&
+        request.resource.data.tripName == resource.data.tripName &&
+        request.resource.data.inviterId == resource.data.inviterId &&
+        request.resource.data.inviteeId == resource.data.inviteeId &&
+        request.resource.data.createdAt == resource.data.createdAt &&
+        (
+          (
+            request.auth.uid == resource.data.inviteeId &&
+            resource.data.status == 'pending' &&
+            request.resource.data.role == resource.data.role &&
+            request.resource.data.status in ['accepted', 'rejected'] &&
+            request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'updatedAt']) &&
+            (
+              request.resource.data.status == 'rejected' ||
+              (
+                getAfter(/databases/$(database)/documents/trips/$(resource.data.tripId)).data.memberIds.hasAny([request.auth.uid]) &&
+                getAfter(/databases/$(database)/documents/trips/$(resource.data.tripId)).data.memberRoles[request.auth.uid] == resource.data.role
+              )
+            )
+          ) ||
+          (
+            isOwner(trip(resource.data.tripId)) &&
+            request.resource.data.status in ['pending', 'cancelled'] &&
+            request.resource.data.diff(resource.data).affectedKeys().hasOnly(['role', 'status', 'updatedAt'])
+          )
+        );
+      allow delete: if false;
     }
 
     match /publicTrips/{tripId} {

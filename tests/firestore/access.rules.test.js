@@ -16,6 +16,7 @@ import {
   updateDoc,
   where,
   writeBatch,
+  serverTimestamp,
 } from 'firebase/firestore'
 import { afterAll, beforeAll, beforeEach, describe, it } from 'vitest'
 import { expect } from 'vitest'
@@ -73,6 +74,10 @@ beforeEach(async () => {
     await setDoc(doc(db, 'profiles', 'owner'), {
       username: 'owner',
       displayName: 'Gezi Sahibi',
+    })
+    await setDoc(doc(db, 'profiles', 'guest'), {
+      username: 'guest',
+      displayName: 'Davetli Gezgin',
     })
     await setDoc(doc(db, 'trips', 'public-trip'), {
       ownerId: 'owner',
@@ -212,6 +217,58 @@ describe('profile integrity', () => {
 })
 
 describe('trip roles', () => {
+  it('keeps an invitation private and grants membership only when the invitee accepts it', async () => {
+    const ownerDb = testEnvironment.authenticatedContext('owner').firestore()
+    const guestDb = testEnvironment.authenticatedContext('guest').firestore()
+    const outsiderDb = testEnvironment.authenticatedContext('outsider').firestore()
+    const invitationRef = doc(ownerDb, 'tripInvitations', 'public-trip_guest')
+    await assertSucceeds(setDoc(invitationRef, {
+      tripId: 'public-trip',
+      tripName: 'Bangkok',
+      inviterId: 'owner',
+      inviteeId: 'guest',
+      role: 'viewer',
+      status: 'pending',
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    }))
+
+    await assertFails(getDoc(doc(guestDb, 'trips', 'public-trip')))
+    await assertSucceeds(getDoc(doc(guestDb, 'tripInvitations', 'public-trip_guest')))
+    await assertFails(getDoc(doc(outsiderDb, 'tripInvitations', 'public-trip_guest')))
+
+    const batch = writeBatch(guestDb)
+    batch.update(doc(guestDb, 'tripInvitations', 'public-trip_guest'), {
+      status: 'accepted',
+      updatedAt: serverTimestamp(),
+    })
+    batch.update(doc(guestDb, 'trips', 'public-trip'), {
+      memberIds: arrayUnion('guest'),
+      'memberRoles.guest': 'viewer',
+      updatedAt: serverTimestamp(),
+    })
+    await assertSucceeds(batch.commit())
+    expect((await getDoc(doc(guestDb, 'trips', 'public-trip'))).data().memberRoles.guest).toBe('viewer')
+  })
+
+  it('does not let an invitee choose a stronger role than the invitation', async () => {
+    await testEnvironment.withSecurityRulesDisabled(async (context) => {
+      await setDoc(doc(context.firestore(), 'tripInvitations', 'public-trip_guest'), {
+        tripId: 'public-trip', tripName: 'Bangkok', inviterId: 'owner', inviteeId: 'guest',
+        role: 'viewer', status: 'pending', createdAt: new Date(), updatedAt: new Date(),
+      })
+    })
+    const guestDb = testEnvironment.authenticatedContext('guest').firestore()
+    const batch = writeBatch(guestDb)
+    batch.update(doc(guestDb, 'tripInvitations', 'public-trip_guest'), {
+      status: 'accepted', updatedAt: serverTimestamp(),
+    })
+    batch.update(doc(guestDb, 'trips', 'public-trip'), {
+      memberIds: arrayUnion('guest'), 'memberRoles.guest': 'editor', updatedAt: serverTimestamp(),
+    })
+    await assertFails(batch.commit())
+  })
+
   it('lets the owner atomically update sanitized public trip projections', async () => {
     const db = testEnvironment.authenticatedContext('owner').firestore()
     const batch = writeBatch(db)

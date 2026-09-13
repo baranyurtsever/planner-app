@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate, useOutletContext } from 'react-router-dom'
 import { ErrorMessage } from '../../../shared/components/Feedback'
 import { canManageTrip } from '../../../shared/domain/access'
@@ -12,6 +12,11 @@ import {
   updateTrip,
   updateTripMember,
 } from '../data/tripRepository'
+import {
+  cancelTripInvitation,
+  sendTripInvitation,
+  subscribeToTripInvitations,
+} from '../data/tripInvitationRepository'
 
 const roleLabels = {
   owner: 'Sahip',
@@ -27,8 +32,11 @@ export function TripDetailsView({
   user,
   onArchive,
   onRemoveMember,
-  onSaveMember,
+  onChangeMemberRole,
+  onInviteMember,
+  onCancelInvitation,
   onSaveTrip,
+  pendingInvitations = [],
   profilesById = {},
 }) {
   const [memberUsername, setMemberUsername] = useState('')
@@ -43,7 +51,7 @@ export function TripDetailsView({
 
   function submitMember(event) {
     event.preventDefault()
-    onSaveMember(memberUsername.trim(), memberRole)
+    onInviteMember(memberUsername.trim(), memberRole)
     setMemberUsername('')
     setMemberRole('viewer')
   }
@@ -83,13 +91,13 @@ export function TripDetailsView({
           }}
           className="mt-6 grid gap-3 rounded-3xl border border-slate-200 bg-white p-6 md:grid-cols-3"
         >
-          <input required aria-label="Gezi adı" value={tripForm.name} onChange={(event) => setTripForm({ ...tripForm, name: event.target.value })} className="rounded-xl border border-slate-200 px-4 py-3" />
-          <input aria-label="Gezi konumu" value={tripForm.locationName} onChange={(event) => setTripForm({ ...tripForm, locationName: event.target.value })} className="rounded-xl border border-slate-200 px-4 py-3" />
-          <select aria-label="Gezi görünürlüğü" value={tripForm.visibility} onChange={(event) => setTripForm({ ...tripForm, visibility: event.target.value })} className="rounded-xl border border-slate-200 px-4 py-3">
+          <input required aria-label="Gezi adı" value={tripForm.name} onChange={(event) => setTripForm({ ...tripForm, name: event.target.value })} className="min-w-0 rounded-xl border border-slate-200 px-4 py-3" />
+          <input aria-label="Gezi konumu" value={tripForm.locationName} onChange={(event) => setTripForm({ ...tripForm, locationName: event.target.value })} className="min-w-0 rounded-xl border border-slate-200 px-4 py-3" />
+          <select aria-label="Gezi görünürlüğü" value={tripForm.visibility} onChange={(event) => setTripForm({ ...tripForm, visibility: event.target.value })} className="min-w-0 rounded-xl border border-slate-200 px-4 py-3">
             <option value="private">Gizli</option>
             <option value="profile">Profilde açık</option>
           </select>
-          <select aria-label="Varsayılan saat dilimi" value={tripForm.defaultTimeZone} onChange={(event) => setTripForm({ ...tripForm, defaultTimeZone: event.target.value })} className="rounded-xl border border-slate-200 px-4 py-3 md:col-span-3">
+          <select aria-label="Varsayılan saat dilimi" value={tripForm.defaultTimeZone} onChange={(event) => setTripForm({ ...tripForm, defaultTimeZone: event.target.value })} className="min-w-0 max-w-full rounded-xl border border-slate-200 px-4 py-3 md:col-span-3">
             {defaultTimeZoneOptions.map((timeZone) => <option key={timeZone.value} value={timeZone.value}>{timeZone.label}</option>)}
           </select>
           <button className="rounded-xl bg-teal-800 px-5 py-3 font-bold text-white md:col-span-3">Gezi bilgilerini kaydet</button>
@@ -101,7 +109,7 @@ export function TripDetailsView({
         <h3 className="mt-2 text-2xl font-black">Katılımcılar ve roller</h3>
         <p className="mt-2 text-sm text-slate-500">
           {owner
-            ? 'Kullanıcı adıyla katılımcı ekleyebilir ve rolünü değiştirebilirsin.'
+            ? 'Kullanıcı adıyla davet gönder; üyelik yalnız davet kabul edilince başlar.'
             : 'Geziye katılan kişileri ve rollerini burada görebilirsin.'}
         </p>
 
@@ -125,7 +133,7 @@ export function TripDetailsView({
               <option value="viewer">Katılımcı</option>
             </select>
             <button className="rounded-xl bg-slate-900 px-5 py-3 font-bold text-white">
-              Ekle / güncelle
+              Davet gönder
             </button>
           </form>
         )}
@@ -139,7 +147,12 @@ export function TripDetailsView({
                 </div>
                 <div>
                   <ProfileIdentity profile={profilesById[id]} />
-                <p className="text-xs text-slate-400">{roleLabels[trip.memberRoles[id]]}</p>
+                  {owner && id !== trip.ownerId ? (
+                    <select aria-label={`${profilesById[id]?.displayName || 'Katılımcı'} rolü`} value={trip.memberRoles[id]} onChange={(event) => onChangeMemberRole(id, event.target.value)} className="mt-1 rounded-lg border border-slate-200 px-2 py-1 text-xs">
+                      <option value="editor">Düzenleyici</option>
+                      <option value="viewer">Katılımcı</option>
+                    </select>
+                  ) : <p className="text-xs text-slate-400">{roleLabels[trip.memberRoles[id]]}</p>}
                 </div>
               </div>
               {owner && id !== trip.ownerId && (
@@ -150,6 +163,23 @@ export function TripDetailsView({
             </div>
           ))}
         </div>
+
+        {owner && pendingInvitations.length > 0 && (
+          <div className="mt-6 border-t border-slate-100 pt-5">
+            <p className="text-sm font-black">Bekleyen davetler</p>
+            <div className="mt-2 divide-y divide-slate-100">
+              {pendingInvitations.map((invitation) => (
+                <div key={invitation.id} className="flex items-center justify-between gap-3 py-3">
+                  <div>
+                    <ProfileIdentity profile={profilesById[invitation.inviteeId]} />
+                    <p className="text-xs text-slate-400">{roleLabels[invitation.role]} olarak davet edildi</p>
+                  </div>
+                  <button type="button" onClick={() => onCancelInvitation(invitation)} className="text-sm font-bold text-rose-600">Daveti iptal et</button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </section>
 
       {owner && (
@@ -170,7 +200,22 @@ export function TripDetailsPage() {
   const { trip, user } = useOutletContext()
   const navigate = useNavigate()
   const [error, setError] = useState('')
-  const profilesById = useProfilesById(trip.memberIds)
+  const [pendingInvitations, setPendingInvitations] = useState([])
+  const owner = canManageTrip(trip, user.uid)
+  const profilesById = useProfilesById([
+    ...trip.memberIds,
+    ...pendingInvitations.map((invitation) => invitation.inviteeId),
+  ])
+
+  useEffect(() => {
+    if (!owner) return undefined
+    return subscribeToTripInvitations(
+      trip.id,
+      user.uid,
+      setPendingInvitations,
+      (nextError) => setError(nextError.message),
+    )
+  }, [owner, trip.id, user.uid])
 
   async function archive() {
     if (!window.confirm('Bu Gezi arşivlensin mi?')) return
@@ -182,12 +227,30 @@ export function TripDetailsPage() {
     }
   }
 
-  async function saveMember(username, role) {
+  async function inviteMember(username, role) {
     setError('')
     try {
       const profile = await getProfileByUsername(username)
       if (!profile) throw new Error('Bu kullanıcı adıyla eşleşen bir profil bulunamadı.')
-      await updateTripMember(trip, profile.id, role)
+      await sendTripInvitation(trip, user.uid, profile.id, role)
+    } catch (nextError) {
+      setError(nextError.message)
+    }
+  }
+
+  async function changeMemberRole(memberId, role) {
+    setError('')
+    try {
+      await updateTripMember(trip, memberId, role)
+    } catch (nextError) {
+      setError(nextError.message)
+    }
+  }
+
+  async function cancelInvitation(invitation) {
+    setError('')
+    try {
+      await cancelTripInvitation(invitation, user.uid)
     } catch (nextError) {
       setError(nextError.message)
     }
@@ -223,8 +286,11 @@ export function TripDetailsPage() {
         user={user}
         onArchive={archive}
         onRemoveMember={removeMember}
-        onSaveMember={saveMember}
+        onChangeMemberRole={changeMemberRole}
+        onInviteMember={inviteMember}
+        onCancelInvitation={cancelInvitation}
         onSaveTrip={saveTrip}
+        pendingInvitations={pendingInvitations}
         profilesById={profilesById}
       />
       <div className="mt-4"><ErrorMessage message={error} /></div>

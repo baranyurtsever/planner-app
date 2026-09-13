@@ -37,12 +37,33 @@ beforeAll(async () => {
     })
     await setDoc(doc(db, 'trips', 'trip', 'planItems', 'shared'), sharedPlan)
     await setDoc(doc(db, 'trips', 'trip', 'planItems', 'personal'), personalPlan)
+    await setDoc(doc(db, 'profiles', 'guest'), { username: 'guest', displayName: 'Davetli' })
   })
 })
 
 afterAll(async () => environment.cleanup())
 
 describe('authenticated repository workflow', () => {
+  it('creates and atomically accepts a trip invitation', async () => {
+    const trip = {
+      id: 'trip', name: 'Bangkok', ownerId: 'owner', memberIds: ['owner', 'editor', 'viewer'],
+      memberRoles: { owner: 'owner', editor: 'editor', viewer: 'viewer' }, status: 'active',
+    }
+    const ownerDb = environment.authenticatedContext('owner').firestore()
+    const guestDb = environment.authenticatedContext('guest').firestore()
+    const ownerInvitations = await loadRepository('../../src/features/trips/data/tripInvitationRepository.js', ownerDb)
+    const invitationId = await ownerInvitations.sendTripInvitation(trip, 'owner', 'guest', 'viewer')
+    expect(invitationId).toBe('trip_guest')
+
+    const invitation = (await getDoc(doc(guestDb, 'tripInvitations', invitationId))).data()
+    const guestInvitations = await loadRepository('../../src/features/trips/data/tripInvitationRepository.js', guestDb)
+    await guestInvitations.acceptTripInvitation({ id: invitationId, ...invitation }, 'guest')
+
+    const acceptedTrip = (await getDoc(doc(guestDb, 'trips', 'trip'))).data()
+    expect(acceptedTrip.memberIds).toContain('guest')
+    expect(acceptedTrip.memberRoles.guest).toBe('viewer')
+  })
+
   it('runs owner/editor/viewer proposal and participation boundaries through the emulator', async () => {
     const trip = {
       id: 'trip', ownerId: 'owner', memberIds: ['owner', 'editor', 'viewer'],

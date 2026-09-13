@@ -1,7 +1,7 @@
 # 01 — Gezi daveti ve bekleyen davetler
 
 Type: task
-Status: ready-for-agent
+Status: resolved
 
 ## Amaç
 
@@ -17,3 +17,8 @@ Gezi Sahibinin kullanıcı adıyla rol belirterek davet göndermesi; davet edile
 - UI, repository ve Firestore kural testleri geçer.
 
 ## Comments
+
+- Gezi Sahibi kullanıcı adı ve rol ile davet gönderebilir; mevcut üyelerin rolü ayrıca doğrudan değiştirilebilir.
+- Davetler Kişiler ekranında kabul veya ret bekler. Kabul işlemi davet durumu ile Gezi üyeliğini aynı batch içinde günceller.
+- Bekleyen davetler Gezi Detayları ekranında görünür ve Gezi Sahibi tarafından iptal edilebilir.
+- Doğrulama: lint, 73 Vitest testi, 36 Firestore kural testi, 2 Playwright E2E senaryosu ve production build geçti.

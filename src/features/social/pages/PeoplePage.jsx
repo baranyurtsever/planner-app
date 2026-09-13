@@ -11,6 +11,13 @@ import {
   subscribeToFriendships,
   subscribeToIncomingFriendRequests,
 } from '../data/friendshipRepository'
+import {
+  acceptTripInvitation,
+  rejectTripInvitation,
+  subscribeToIncomingTripInvitations,
+} from '../../trips/data/tripInvitationRepository'
+
+const tripRoleLabels = { editor: 'Düzenleyici', viewer: 'Katılımcı' }
 
 export function PeoplePage() {
   const { user } = useAuth()
@@ -18,6 +25,7 @@ export function PeoplePage() {
   const [result, setResult] = useState(null)
   const [incoming, setIncoming] = useState([])
   const [friends, setFriends] = useState([])
+  const [tripInvitations, setTripInvitations] = useState([])
   const [error, setError] = useState('')
   const [message, setMessage] = useState('')
 
@@ -36,6 +44,24 @@ export function PeoplePage() {
     }))
     setFriends(decorated)
   }, (nextError) => setError(nextError.message)), [user.uid])
+
+  useEffect(() => subscribeToIncomingTripInvitations(
+    user.uid,
+    setTripInvitations,
+    (nextError) => setError(nextError.message),
+  ), [user.uid])
+
+  async function decideTripInvitation(invitation, decision) {
+    setError('')
+    setMessage('')
+    try {
+      if (decision === 'accepted') await acceptTripInvitation(invitation, user.uid)
+      else await rejectTripInvitation(invitation, user.uid)
+      setMessage(decision === 'accepted' ? 'Gezi daveti kabul edildi.' : 'Gezi daveti reddedildi.')
+    } catch (decisionError) {
+      setError(decisionError.message)
+    }
+  }
 
   async function search(event) {
     event.preventDefault()
@@ -102,6 +128,25 @@ export function PeoplePage() {
           </div>
         </article>
       )}
+
+      <section className="mt-10">
+        <h2 className="text-2xl font-black">Gezi davetleri</h2>
+        <div className="mt-4 space-y-3">
+          {tripInvitations.map((invitation) => (
+            <article key={invitation.id} className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-teal-200 bg-white p-5">
+              <div>
+                <p className="font-black">{invitation.tripName}</p>
+                <p className="text-sm text-slate-500">{tripRoleLabels[invitation.role]} olarak davet edildin</p>
+              </div>
+              <div className="flex gap-3">
+                <button onClick={() => decideTripInvitation(invitation, 'accepted')} className="text-sm font-bold text-teal-700">Geziye katıl</button>
+                <button onClick={() => decideTripInvitation(invitation, 'rejected')} className="text-sm font-bold text-rose-600">Reddet</button>
+              </div>
+            </article>
+          ))}
+          {!tripInvitations.length && <EmptyState title="Bekleyen Gezi daveti yok" description="Yeni davetler burada görünür." />}
+        </div>
+      </section>
 
       <div className="mt-10 grid gap-8 lg:grid-cols-2">
         <div>

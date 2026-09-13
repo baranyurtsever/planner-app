@@ -4,24 +4,30 @@ async function registerUser(browser, label) {
   const context = await browser.newContext()
   const page = await context.newPage()
   const unique = `${label}_${Date.now()}`
+  const username = unique.slice(0, 24)
   const email = `${unique}@example.test`
   await page.goto('/register')
   await page.getByLabel('Ad soyad').fill(`E2E ${label}`)
-  await page.getByLabel('Kullanıcı adı').fill(unique.slice(0, 24))
+  await page.getByLabel('Kullanıcı adı').fill(username)
   await page.getByLabel('E-posta').fill(email)
   await page.getByLabel('Şifre').fill('test-password')
   const signUpResponse = page.waitForResponse((response) => response.url().includes('accounts:signUp'))
   await page.getByRole('button', { name: 'Hesap oluştur' }).click()
   await expect(page).toHaveURL(/\/app\/trips$/)
   const uid = (await (await signUpResponse).json()).localId
-  return { context, page, uid }
+  return { context, page, uid, username }
 }
 
-async function addTripMember(ownerPage, uid, role) {
-  await ownerPage.getByLabel('Katılımcı kullanıcı kimliği').fill(uid)
+async function inviteTripMember(ownerPage, member, role) {
+  await ownerPage.getByLabel('Katılımcı kullanıcı adı').fill(member.username)
   await ownerPage.getByLabel('Katılımcı rolü').selectOption(role)
-  await ownerPage.getByRole('button', { name: 'Ekle / güncelle' }).click()
-  await expect(ownerPage.getByText(uid, { exact: true })).toBeVisible()
+  await ownerPage.getByRole('button', { name: 'Davet gönder' }).click()
+  await expect(ownerPage.getByText(`@${member.username}`, { exact: true })).toBeVisible()
+
+  await member.page.goto('/app/people')
+  await expect(member.page.getByText('E2E Bangkok', { exact: true })).toBeVisible()
+  await member.page.getByRole('button', { name: 'Geziye katıl' }).click()
+  await expect(member.page.getByText('Gezi daveti kabul edildi.')).toBeVisible()
 }
 
 async function createPlan(page, { title, scope = 'personal' }) {
@@ -64,8 +70,8 @@ test('owner, editor and viewer complete proposal, drag, resize, join and leave f
   await owner.page.screenshot({ path: 'test-results/design-mobile.png', fullPage: true })
   await owner.page.setViewportSize({ width: 1440, height: 1000 })
   await owner.page.screenshot({ path: 'test-results/design-desktop.png', fullPage: true })
-  await addTripMember(owner.page, editor.uid, 'editor')
-  await addTripMember(owner.page, viewer.uid, 'viewer')
+  await inviteTripMember(owner.page, editor, 'editor')
+  await inviteTripMember(owner.page, viewer, 'viewer')
 
   await editor.page.goto(`${tripPath}/calendar`)
   await createPlan(editor.page, { title: 'Editor ortak önerisi', scope: 'shared' })
