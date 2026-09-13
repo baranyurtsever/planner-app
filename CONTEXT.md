@@ -64,6 +64,10 @@ _Avoid_: Kullanıcının tarayıcı saati, tüm kartları geriye dönük değiş
 Bir Geziyi gizli tutan veya kullanıcının profilinde görünür kılan üst seviye paylaşım ayarı. Gizli bir Gezinin altındaki kayıtlar kendi görünürlük seviyelerinden bağımsız olarak Profil Ziyaretçilerine gösterilmez.
 _Avoid_: Public, Plan Öğesi görünürlüğü
 
+**Gezi Daveti**:
+Gezi Sahibinin bir kullanıcıya önerdiği Gezi rolüdür. Davet kabul edilene kadar kullanıcı Gezi katılımcısı olmaz ve Gezi verilerine erişemez.
+_Avoid_: Doğrudan katılımcı ekleme, Plan Katılım İsteği, arkadaşlık isteği
+
 **Arşivlenmiş Gezi**:
 Aktif planlamadan kaldırılmış, normal listelerde gösterilmeyen ve değiştirilemeyen; ortak ve kişisel kayıtları korunmaya devam eden Gezi.
 _Avoid_: Silinmiş gezi, tamamlanmış gezi
