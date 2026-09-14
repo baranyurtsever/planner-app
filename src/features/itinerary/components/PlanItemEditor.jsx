@@ -58,7 +58,9 @@ function initialForm(item, initialSlot, userId, defaultTimeZone = localTimeZone)
       locationOpeningHours: item.location?.openingHours || '',
       locationCategory: item.location?.category || '',
       travelMode: item.travelFromPrevious?.mode || 'none',
-      travelDurationMinutes: item.travelFromPrevious?.durationMinutes || 0,
+      travelDurationMinutes: item.travelFromPrevious?.durationMinutes > 0
+        ? item.travelFromPrevious.durationMinutes
+        : '',
       participantIds: item.participantIds || [],
       excludedParticipantIds: item.excludedParticipantIds || [],
       blockedParticipantIds: item.blockedParticipantIds || [],
@@ -91,7 +93,7 @@ function initialForm(item, initialSlot, userId, defaultTimeZone = localTimeZone)
     locationOpeningHours: '',
     locationCategory: '',
     travelMode: 'none',
-    travelDurationMinutes: 0,
+    travelDurationMinutes: '',
     participantIds: [userId],
     excludedParticipantIds: [],
     blockedParticipantIds: [],
@@ -312,7 +314,7 @@ export function PlanItemEditor({
           </div>
           <div className="rounded-2xl border border-sky-100 bg-sky-50/60 p-4 md:col-span-2">
             <p className="text-sm font-black text-sky-950">Önceki plandan buraya ulaşım</p>
-            <p className="mt-1 text-xs text-sky-800">Takvim, iki plan arasındaki boşluğun yeterli olup olmadığını bu süreyle kontrol eder.</p>
+            <p className="mt-1 text-xs text-sky-800">İstersen yaklaşık yolculuk süresini dakika olarak gir. Boş bırakırsan takvim ulaşım süresi uyarısı hesaplamaz.</p>
             <div className="mt-3 grid gap-3 sm:grid-cols-2">
               <label className="text-sm font-semibold text-slate-600">
                 Ulaşım şekli
@@ -322,7 +324,7 @@ export function PlanItemEditor({
               </label>
               <label className="text-sm font-semibold text-slate-600">
                 Tahmini süre (dakika)
-                <input aria-label="Tahmini ulaşım süresi" type="number" min="1" max="10080" step="5" required={form.travelMode !== 'none'} disabled={form.travelMode === 'none'} value={form.travelDurationMinutes} onChange={(event) => setForm({ ...form, travelDurationMinutes: event.target.value })} className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 disabled:bg-slate-100" />
+                <input aria-label="Tahmini ulaşım süresi" type="number" min="1" max="10080" step="1" placeholder="Örn. 45 (isteğe bağlı)" disabled={form.travelMode === 'none'} value={form.travelDurationMinutes} onChange={(event) => setForm({ ...form, travelDurationMinutes: event.target.value })} className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 disabled:bg-slate-100" />
               </label>
             </div>
           </div>
