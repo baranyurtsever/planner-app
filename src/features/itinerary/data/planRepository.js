@@ -174,6 +174,12 @@ export function subscribeToPlanItems(tripId, userId, callback, onError = console
     where('visibility', '==', 'private'),
   )
   const snapshots = { visible: [], private: [] }
+  const preserveOfflineCache = (snapshot) => {
+    const cached = getOfflinePlans(userId, tripId)
+    if (!snapshot.metadata.fromCache || !snapshot.empty || !cached.length) return false
+    callback(cached)
+    return true
+  }
   const publish = () => {
     const uniqueItems = new Map(
       [...snapshots.visible, ...snapshots.private].map((item) => [item.id, item]),
@@ -194,11 +200,13 @@ export function subscribeToPlanItems(tripId, userId, callback, onError = console
     onError(error)
   }
   const unsubscribeVisible = onSnapshot(visibleQuery, (snapshot) => {
+    if (preserveOfflineCache(snapshot)) return
     snapshots.visible = decode(snapshot)
     void reconcilePublicPlanProjections(tripId, userId, snapshots.visible)
     publish()
   }, handleError)
   const unsubscribePrivate = onSnapshot(privateOwnerQuery, (snapshot) => {
+    if (preserveOfflineCache(snapshot)) return
     snapshots.private = decode(snapshot)
     publish()
   }, handleError)
@@ -234,8 +242,12 @@ export function voteOnPlanProposal(tripId, proposalId, userId, vote) {
 }
 
 export function subscribeToPublicPlanItems(tripId, callback, onError = console.error) {
-  return onSnapshot(
+  const publicPlansQuery = query(
     collection(db, 'trips', tripId, 'publicPlanItems'),
+    where('visibility', '==', 'profile'),
+  )
+  return onSnapshot(
+    publicPlansQuery,
     (snapshot) => callback(decode(snapshot)),
     onError,
   )

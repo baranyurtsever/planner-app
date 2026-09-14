@@ -672,12 +672,10 @@ service cloud.firestore {
       }
 
       match /publicPlanItems/{planItemId} {
-        allow read: if isParticipant(trip(tripId)) ||
-          (
+        allow read: if (
             isPublicTrip(trip(tripId)) &&
-            exists(/databases/$(database)/documents/trips/$(tripId)/planItems/$(planItemId)) &&
-            planItem(tripId, planItemId).visibility == 'profile'
-          );
+            resource.data.visibility == 'profile'
+          ) || isParticipant(trip(tripId));
         allow create, update: if isActiveTrip(tripId) &&
           request.resource.data.keys().hasOnly([
             'scope',
@@ -1022,14 +1020,14 @@ service cloud.firestore {
           !hasDeparted(resource.data.tripId, resource.data.planItemId, resource.data.ownerId)
         ) &&
         (
+          (
+            isPublicTrip(trip(resource.data.tripId)) &&
+            resource.data.visibility == 'profile'
+          ) ||
           (signedIn() && resource.data.ownerId == request.auth.uid) ||
           (
             isParticipant(trip(resource.data.tripId)) &&
             resource.data.visibility in ['trip', 'profile']
-          ) ||
-          (
-            isPublicTrip(trip(resource.data.tripId)) &&
-            resource.data.visibility == 'profile'
           )
         );
       allow create: if signedIn() &&

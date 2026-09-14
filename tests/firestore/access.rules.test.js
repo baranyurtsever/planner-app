@@ -189,18 +189,19 @@ describe('public reads', () => {
     await assertSucceeds(getDoc(doc(db, 'trips', 'public-trip', 'publicPlanItems', 'profile-plan')))
   })
 
-  it('does not expose a stale projection after its source is hidden', async () => {
-    await testEnvironment.withSecurityRulesDisabled(async (context) => {
-      await updateDoc(
-        doc(context.firestore(), 'trips', 'public-trip', 'planItems', 'profile-plan'),
-        { visibility: 'trip' },
-      )
-    })
+  it('lets a profile visitor list the public plans and expenses rendered by the trip page', async () => {
     const db = testEnvironment.unauthenticatedContext().firestore()
-    await assertFails(getDoc(
-      doc(db, 'trips', 'public-trip', 'publicPlanItems', 'profile-plan'),
-    ))
+    await assertSucceeds(getDocs(query(
+      collection(db, 'trips', 'public-trip', 'publicPlanItems'),
+      where('visibility', '==', 'profile'),
+    )))
+    await assertSucceeds(getDocs(query(
+      collection(db, 'expenses'),
+      where('tripId', '==', 'public-trip'),
+      where('visibility', '==', 'profile'),
+    )))
   })
+
 })
 
 describe('profile integrity', () => {

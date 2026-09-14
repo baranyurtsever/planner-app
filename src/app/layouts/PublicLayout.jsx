@@ -1,6 +1,12 @@
 import { Link, Outlet } from 'react-router-dom'
+import { AuthProvider } from '../../features/auth/AuthContext'
+import { useAuth } from '../../features/auth/authState'
 
-export function PublicLayout() {
+function PublicLayoutContent() {
+  const { user, loading } = useAuth()
+  const destination = !loading && user ? '/app/trips' : '/login'
+  const label = !loading && user ? 'Gezilerime dön' : 'Giriş yap'
+
   return (
     <div className="min-h-screen bg-[#f4f1ea] text-slate-900">
       <header className="border-b border-slate-200/80 bg-[#f4f1ea]/90 backdrop-blur">
@@ -10,10 +16,10 @@ export function PublicLayout() {
             Peregrin
           </Link>
           <Link
-            to="/login"
+            to={destination}
             className="rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-semibold hover:border-teal-600"
           >
-            Giriş yap
+            {label}
           </Link>
         </div>
       </header>
@@ -21,5 +27,13 @@ export function PublicLayout() {
         <Outlet />
       </main>
     </div>
+  )
+}
+
+export function PublicLayout() {
+  return (
+    <AuthProvider>
+      <PublicLayoutContent />
+    </AuthProvider>
   )
 }
