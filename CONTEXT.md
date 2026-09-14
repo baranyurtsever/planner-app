@@ -96,6 +96,10 @@ _Avoid_: Public, Plan Öğesi görünürlüğü
 Gezi Sahibinin bir kullanıcıya önerdiği Gezi rolüdür. Davet kabul edilene kadar kullanıcı Gezi katılımcısı olmaz ve Gezi verilerine erişemez.
 _Avoid_: Doğrudan katılımcı ekleme, Plan Katılım İsteği, arkadaşlık isteği
 
+**İşlem Merkezi**:
+Bir kullanıcının cevap veya karar vermesini bekleyen Gezi Daveti, arkadaşlık isteği, Plan Katılım İsteği ve Plan Değişiklik Önerilerini geziler arasında birleştiren kişisel görünüm. Yaklaşan planlar bilgi verir fakat bekleyen işlem sayılmaz.
+_Avoid_: Bildirim kutusu, aktivite geçmişi
+
 **Arşivlenmiş Gezi**:
 Aktif planlamadan kaldırılmış, normal listelerde gösterilmeyen ve değiştirilemeyen; ortak ve kişisel kayıtları korunmaya devam eden Gezi.
 _Avoid_: Silinmiş gezi, tamamlanmış gezi

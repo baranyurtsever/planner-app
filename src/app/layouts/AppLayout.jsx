@@ -1,10 +1,14 @@
 import { NavLink, Outlet } from 'react-router-dom'
 import { logout } from '../../features/auth/data/authRepository'
+import { useAuth } from '../../features/auth/authState'
+import { useActionCenter } from '../../features/action-center/hooks/useActionCenter'
 import { clearAllOfflineCache } from '../../shared/offline/offlineCache'
 import { OfflineStatus } from '../../shared/offline/OfflineStatus'
 import { PwaInstallButton } from '../../shared/offline/PwaInstallButton'
 
 export function AppLayout() {
+  const { user } = useAuth()
+  const actionCenter = useActionCenter(user.uid)
   return (
     <div className="app-shell min-h-screen text-slate-900">
       <OfflineStatus />
@@ -33,6 +37,15 @@ export function AppLayout() {
               Kişiler
             </NavLink>
             <NavLink
+              to="/app/actions"
+              className={({ isActive }) =>
+                `flex items-center gap-1 text-sm font-semibold ${isActive ? 'text-teal-800' : 'text-slate-500'}`
+              }
+            >
+              İşlemler
+              {actionCenter.count > 0 && <span aria-label={`${actionCenter.count} bekleyen işlem`} className="grid min-w-5 place-items-center rounded-full bg-rose-600 px-1.5 py-0.5 text-[10px] font-black text-white">{actionCenter.count > 99 ? '99+' : actionCenter.count}</span>}
+            </NavLink>
+            <NavLink
               to="/app/profile"
               className={({ isActive }) =>
                 `text-sm font-semibold ${isActive ? 'text-teal-800' : 'text-slate-500'}`
@@ -52,7 +65,7 @@ export function AppLayout() {
         </div>
       </header>
       <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-10">
-        <Outlet />
+        <Outlet context={{ actionCenter }} />
       </main>
     </div>
   )

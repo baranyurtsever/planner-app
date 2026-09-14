@@ -10,6 +10,9 @@ const AuthRoute = lazy(() =>
 const BudgetPage = lazy(() =>
   import('../features/expenses/pages/BudgetPage').then((module) => ({ default: module.BudgetPage })),
 )
+const ActionCenterPage = lazy(() =>
+  import('../features/action-center/pages/ActionCenterPage').then((module) => ({ default: module.ActionCenterPage })),
+)
 const PlanPage = lazy(() =>
   import('../features/itinerary/pages/PlanPage').then((module) => ({ default: module.PlanPage })),
 )
@@ -79,6 +82,7 @@ export function AppRouter() {
             <Route index element={<Navigate to="trips" replace />} />
             <Route path="trips" element={<TripsPage />} />
             <Route path="people" element={<PeoplePage />} />
+            <Route path="actions" element={<ActionCenterPage />} />
             <Route path="people/:username" element={<AppProfilePage />} />
             <Route path="profile" element={<AppProfilePage />} />
             <Route path="trips/:tripId" element={<TripLayout />}>
